@@ -142,6 +142,24 @@ body {
   border: 1px solid var(--accent);
 }
 
+.order-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr auto;
+  gap: 24px;
+}
+
+.report-card-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+  gap: 20px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
 @media (max-width: 1024px) {
   .layout {
     grid-template-columns: 80px 1fr;
@@ -149,5 +167,48 @@ body {
 
   .sidebar span {
     display: none;
+  }
+}
+
+/* Mobile & Tablet Responsive Fixes */
+@media (max-width: 768px) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    flex-direction: row;
+    padding: 12px;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  
+  .sidebar h2, .sidebar img {
+    display: none;
+  }
+  
+  .main-content {
+    padding: 16px;
+    height: auto;
+  }
+
+  .order-card-grid, .report-grid, .report-card-grid {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+    gap: 16px !important;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
   }
 }

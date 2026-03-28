@@ -599,7 +599,7 @@ const ReportsView = () => {
                             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>لا توجد تقارير مؤرشفة بعد.</p>
                         ) : (
                             dailyReports.map(report => (
-                                <div key={report.id} className="glass-card" style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr auto', gap: '20px', alignItems: 'center' }}>
+                                <div key={report.id} className="glass-card report-card-grid" style={{ padding: '20px', alignItems: 'center' }}>
                                     <div>
                                         <p style={{ fontWeight: '600' }}>تقرير يوم {report.date}</p>
                                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>

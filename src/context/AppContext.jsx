@@ -4,6 +4,14 @@ import { API_CONFIG } from '../config/apiConfig';
 
 const AppContext = createContext();
 
+import {
+  getNormalizedNow,
+  getLogicalShiftDateString,
+  calculateDelayMinutes,
+  getSafeISOTime,
+  generateSafeId
+} from '../utils/shiftLogic';
+
 const sendToN8N = async (payload, type) => {
   try {
     // We use a fire-and-forget approach or log if it fails, but don't block UI
@@ -12,7 +20,7 @@ const sendToN8N = async (payload, type) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         source: 'Delivery_System_React',
-        timestamp: new Date().toISOString(),
+        timestamp: getSafeISOTime(),
         type,
         payload
       })
@@ -92,7 +100,7 @@ export const AppProvider = ({ children }) => {
   // System Timer for Auto-Shift Close (at 4 AM)
   useEffect(() => {
     const checkAutoClose = () => {
-      const now = new Date();
+      const now = getNormalizedNow();
       if (currentShift && now.getHours() === 4) {
         // Only trigger if there are no active orders (already handled in closeShift logic)
         // This will attempt a force-close which triggers the JSON download
@@ -126,7 +134,7 @@ export const AppProvider = ({ children }) => {
             .map(extOrder => {
               hasNew = true;
               return {
-                id: `EXT-${Date.now()}-${extOrder.order_id}`,
+                id: generateSafeId(`EXT-${extOrder.order_id}`),
                 originalId: String(extOrder.order_id),
                 type: 'external',
                 customerName: extOrder.customer?.full_name || 'عميل خارجي',
@@ -137,7 +145,7 @@ export const AppProvider = ({ children }) => {
                 itemsDescription: extOrder.itemsSummary || 'طلب من التطبيق',
                 items: extOrder.items?.map(i => ({ name: i.name, count: i.quantity, price: i.price })) || [],
                 paymentMethod: extOrder.customer?.payment_method || 'Cash',
-                timestamp: new Date().toISOString(),
+                timestamp: getSafeISOTime(),
                 status: 'pending'
               };
             });
@@ -175,7 +183,7 @@ export const AppProvider = ({ children }) => {
           .map(extOrder => {
             hasNew = true;
             return {
-              id: `EXT-${Date.now()}-${extOrder.order_id}`,
+              id: generateSafeId(`EXT-${extOrder.order_id}`),
               originalId: String(extOrder.order_id),
               type: 'external',
               customerName: extOrder.customer?.full_name || 'عميل خارجي',
@@ -186,7 +194,7 @@ export const AppProvider = ({ children }) => {
               itemsDescription: extOrder.itemsSummary || 'طلب من التطبيق',
               items: extOrder.items?.map(i => ({ name: i.name, count: i.quantity, price: i.price })) || [],
               paymentMethod: extOrder.customer?.payment_method || 'Cash',
-              timestamp: new Date().toISOString(),
+              timestamp: getSafeISOTime(),
               status: 'pending'
             };
           });
@@ -204,8 +212,8 @@ export const AppProvider = ({ children }) => {
 
   const logAction = (action, details, user = 'System') => {
     const newLog = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
+      id: generateSafeId('log'),
+      timestamp: getSafeISOTime(),
       action,
       details,
       user,
@@ -221,8 +229,8 @@ export const AppProvider = ({ children }) => {
 
     // 2. Sort by Last Return Time (Oldest First - FIFO), then by Order Count (Balancing)
     return available.sort((a, b) => {
-      const timeA = new Date(a.lastReturnTime || 0).getTime();
-      const timeB = new Date(b.lastReturnTime || 0).getTime();
+      const timeA = a.lastReturnTime ? new Date(a.lastReturnTime).getTime() : 0;
+      const timeB = b.lastReturnTime ? new Date(b.lastReturnTime).getTime() : 0;
       if (timeA !== timeB) return timeA - timeB; // First back
       return (a.ordersCount || 0) - (b.ordersCount || 0); // Least orders
     })[0];
@@ -231,9 +239,9 @@ export const AppProvider = ({ children }) => {
   const openShift = () => {
     if (currentShift) return;
     const newShift = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleDateString('ar-EG'),
-      startTime: new Date().toISOString(),
+      id: generateSafeId('shift'),
+      date: getLogicalShiftDateString(),
+      startTime: getSafeISOTime(),
       status: 'open'
     };
     setCurrentShift(newShift);
@@ -242,7 +250,7 @@ export const AppProvider = ({ children }) => {
       ...p,
       shiftStatus: 'closed',
       state: 'available',
-      lastReturnTime: new Date().toISOString(),
+      lastReturnTime: getSafeISOTime(),
       balance: 0,
       totalMinutes: 0,
       ordersCount: 0,
@@ -273,7 +281,7 @@ export const AppProvider = ({ children }) => {
 
     const snapshot = {
       ...currentShift,
-      endTime: new Date().toISOString(),
+      endTime: getSafeISOTime(),
       status: 'closed',
       ordersCount: stats.totalOrders,
       totalDeliveryFees: stats.pilotPerformance.reduce((sum, p) => sum + p.feeEarnings, 0),
@@ -334,9 +342,9 @@ export const AppProvider = ({ children }) => {
       id: finalId,
       originalId: orderData.id, // Store original receipt No for display
       status: 'pending_timer', // Initial status
-      timestamp: new Date().toISOString(),
+      timestamp: getSafeISOTime(),
       shiftId: currentShift.id, // Link to Shift
-      logs: [{ time: new Date().toISOString(), action: 'CREATED', user: 'System' }] // Internal Order Log
+      logs: [{ time: getSafeISOTime(), action: 'CREATED', user: 'System' }] // Internal Order Log
     };
     setOrders(prev => [newOrder, ...prev]);
     logAction('ORDER_CREATE', `Order #${orderData.id} created`, 'Operator');
@@ -370,32 +378,40 @@ export const AppProvider = ({ children }) => {
   };
 
   const cancelOrder = (orderId, reason) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.status === 'cancelled') return;
+
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'cancelled', cancellationReason: reason, cancelledAt: new Date().toISOString() }
+        ? { ...o, status: 'cancelled', cancellationReason: reason, cancelledAt: getSafeISOTime() }
         : o
     ));
     logAction('ORDER_CANCEL', `Order #${orderId} cancelled. Reason: ${reason}`, 'Supervisor');
-    const order = orders.find(o => o.id === orderId);
-    if (order) sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
+    sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
   const confirmOrder = (orderId) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId
-        ? { ...order, status: 'waiting_driver', confirmedAt: new Date().toISOString() }
-        : order
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.status !== 'pending') return;
+
+    setOrders(prev => prev.map(o =>
+      o.id === orderId
+        ? { ...o, status: 'waiting_driver', confirmedAt: getSafeISOTime() }
+        : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
   };
 
   // Step 2: Assign Driver (Locks Order, Ready to Print)
   const assignPilot = (orderId, pilotId) => {
-    setOrders(prev => prev.map(order =>
-      order.id === orderId
-        ? { ...order, status: 'driver_assigned', pilotId, assignedAt: new Date().toISOString() }
-        : order
+    const order = orders.find(o => o.id === orderId);
+    if (!order || ['driver_assigned', 'active', 'completed', 'cancelled', 'failed_delivery'].includes(order.status)) return;
+
+    setOrders(prev => prev.map(o =>
+      o.id === orderId
+        ? { ...o, status: 'driver_assigned', pilotId, assignedAt: getSafeISOTime() }
+        : o
     ));
     const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
@@ -404,11 +420,11 @@ export const AppProvider = ({ children }) => {
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
   const startDelivery = (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || !order.pilotId) return;
+    if (!order || !order.pilotId || order.status === 'active' || order.status === 'completed') return;
 
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'active', startTime: new Date().toISOString() }
+        ? { ...o, status: 'active', startTime: getSafeISOTime() }
         : o
     ));
 
@@ -425,11 +441,11 @@ export const AppProvider = ({ children }) => {
   // Step 4: Complete (Pilot Returns -> Status Available + Queue Update)
   const completeOrder = (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order) return;
+    if (!order || order.status === 'completed') return;
 
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'completed', endTime: new Date().toISOString() }
+        ? { ...o, status: 'completed', endTime: getSafeISOTime() }
         : o
     ));
 
@@ -437,7 +453,7 @@ export const AppProvider = ({ children }) => {
     if (order.pilotId) {
       setPilots(prev => prev.map(p =>
         p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: new Date().toISOString(), ordersCount: (p.ordersCount || 0) + 1 }
+          ? { ...p, state: 'available', lastReturnTime: getSafeISOTime(), ordersCount: (p.ordersCount || 0) + 1 }
           : p
       ));
     }
@@ -447,11 +463,11 @@ export const AppProvider = ({ children }) => {
 
   const failDelivery = (orderId, reason) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order) return;
+    if (!order || order.status === 'failed_delivery') return;
 
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'failed_delivery', failureReason: reason, endTime: new Date().toISOString() }
+        ? { ...o, status: 'failed_delivery', failureReason: reason, endTime: getSafeISOTime() }
         : o
     ));
 
@@ -459,7 +475,7 @@ export const AppProvider = ({ children }) => {
     if (order.pilotId) {
       setPilots(prev => prev.map(p =>
         p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: new Date().toISOString() } // Returned, but maybe didn't complete? Keep count same or inc? I'll keep it same as effort isn't 'gain'.
+          ? { ...p, state: 'available', lastReturnTime: getSafeISOTime() } // Returned, but maybe didn't complete? Keep count same or inc? I'll keep it same as effort isn't 'gain'.
           : p
       ));
     }
@@ -477,15 +493,15 @@ export const AppProvider = ({ children }) => {
           return pilot;
         }
 
-        const now = new Date();
+        const now = getNormalizedNow();
         let sessionMinutes = 0;
         if (newStatus === 'closed' && pilot.lastOpenedAt) {
-          sessionMinutes = Math.floor((now - new Date(pilot.lastOpenedAt)) / (1000 * 60));
+          sessionMinutes = calculateDelayMinutes(pilot.lastOpenedAt);
         }
 
         // When opening shift, set as available and queue time = now
         const updates = newStatus === 'open'
-          ? { state: 'available', lastReturnTime: now.toISOString(), lastOpenedAt: now.toISOString() }
+          ? { state: 'available', lastReturnTime: getSafeISOTime(), lastOpenedAt: getSafeISOTime() }
           : {
             state: 'off',
             lastOpenedAt: null,
@@ -506,7 +522,6 @@ export const AppProvider = ({ children }) => {
   const activeStats = () => {
     const finishedOrders = orders.filter(o => o.status === 'completed');
     const failedOrders = orders.filter(o => o.status === 'failed_delivery');
-    const now = new Date();
 
     const pilotPerformance = pilots.map(p => {
       const pOrders = finishedOrders.filter(o => o.pilotId === p.id);
@@ -514,7 +529,7 @@ export const AppProvider = ({ children }) => {
 
       // Calculate current active minutes if still open
       const currentActiveSession = (p.shiftStatus === 'open' && p.lastOpenedAt)
-        ? Math.floor((now - new Date(p.lastOpenedAt)) / (1000 * 60))
+        ? calculateDelayMinutes(p.lastOpenedAt)
         : 0;
 
       const totalMinutes = (p.totalMinutes || 0) + currentActiveSession;
@@ -570,10 +585,7 @@ export const AppProvider = ({ children }) => {
 
     const delays = orders
       .filter(o => o.status === 'pending' || o.status === 'active')
-      .map(o => {
-        const start = new Date(o.timestamp);
-        return Math.floor((now - start) / (1000 * 60));
-      });
+      .map(o => calculateDelayMinutes(o.timestamp));
 
     const averageDelay = delays.length > 0
       ? Math.floor(delays.reduce((a, b) => a + b, 0) / delays.length)
@@ -594,8 +606,8 @@ export const AppProvider = ({ children }) => {
 
   const addReservation = (resData) => {
     const newRes = {
-      id: `RES-${Date.now().toString().slice(-4)}`,
-      timestamp: new Date().toISOString(),
+      id: generateSafeId('RES'),
+      timestamp: getSafeISOTime(),
       status: 'pending',
       deposit: 50, // Standard deposit from docs
       ...resData
@@ -606,10 +618,12 @@ export const AppProvider = ({ children }) => {
   };
 
   const confirmReservation = (id, refNum, paymentProof = null) => {
-    setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', refNumber: refNum, paymentProof, confirmedAt: new Date().toISOString() } : r));
+    const existing = reservations.find(r => r.id === id);
+    if (!existing || existing.status === 'confirmed') return; // Idempotent check
+
+    setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', refNumber: refNum, paymentProof, confirmedAt: getSafeISOTime() } : r));
     logAction('RES_CONFIRM', `Reservation ${id} confirmed with Ref: ${refNum}`, 'Manager');
-    const updated = reservations.find(r => r.id === id);
-    if (updated) sendToN8N({ ...updated, status: 'confirmed', refNumber: refNum, paymentProof }, 'RESERVATION_CONFIRM');
+    sendToN8N({ ...existing, status: 'confirmed', refNumber: refNum, paymentProof }, 'RESERVATION_CONFIRM');
   };
 
   const deleteReservation = (id) => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { isAutoCloseTime } from '../../utils/shiftLogic';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
     const { isShiftOpen, openShift, closeShift, orders } = useApp();
@@ -83,15 +84,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 ) : (
                     <button
                         onClick={() => {
-                            const now = new Date();
-                            const currentHour = now.getHours();
-
-                            // If it's 4 AM or later (Morning/End of Night), Auto-Close (Force)
-                            // Assuming "4 AM" means >= 4:00. 
-                            if (currentHour >= 4 && currentHour < 12) { // Logic: 4 AM to Noon allows auto-close
+                            if (isAutoCloseTime()) {
                                 closeShift(true);
                             } else {
-                                // Before 4 AM (or PM), require password
                                 const pwd = prompt('أدخل كلمة مرور المشرف لإغلاق الوردية:');
                                 if (pwd === '8080') closeShift(false);
                                 else if (pwd !== null) alert('كلمة مرور خاطئة');

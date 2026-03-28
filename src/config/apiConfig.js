@@ -6,11 +6,11 @@
 export const API_CONFIG = {
     // 1. رابط إرسال البيانات (Webhook)
     // يُستخدم لإرسال الطلبات الجديدة، الحجوزات، وإجراءات الطيارين إلى n8n
-    N8N_SEND_URL: 'https://abokhaterres.app.n8n.cloud/webhook-test/OrderReceiver',
+    N8N_SEND_URL: 'https://restaurant1abukhater.app.n8n.cloud/webhook-test/OrderReview',
 
     // 2. رابط جلب الطلبات (Polling)
     // يُستخدم لسحب الطلبات الجديدة القادمة من "أونلاين" بشكل آلي كل 15 ثانية
-    N8N_FETCH_URL: 'https://abokhaterres.app.n8n.cloud/webhook-test/GetNewOrders',
+    N8N_FETCH_URL: 'https://restaurant1abukhater.app.n8n.cloud/webhook-test/GetNewOrders',
 
     // 3. روابط التنبيهات الصوتية
     // تعليق: يمكنك تغيير الرابط بأي ملف صوتي MP3 آخر
