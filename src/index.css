@@ -181,6 +181,30 @@ body {
 }
 
 /* Sidebar Overlay */
+.menu-toggle {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 1001;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0 16px;
+  height: 42px;
+  border-radius: 20px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+  transition: all 0.2s ease;
+}
+
+.menu-toggle:active {
+  transform: scale(0.95);
+}
+/* Sidebar Overlay */
 .sidebar-overlay {
   position: fixed;
   top: 0;
@@ -192,7 +216,7 @@ body {
   z-index: 998;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .layout {
     grid-template-columns: 80px 1fr;
   }
