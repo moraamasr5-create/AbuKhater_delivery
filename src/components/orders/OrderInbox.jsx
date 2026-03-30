@@ -152,7 +152,7 @@ const OrderInbox = ({ onReedit }) => {
                         if (order.status === 'driver_assigned') { statusColor = '#3b82f6'; statusBg = 'rgba(59, 130, 246, 0.05)'; }
 
                         return (
-                            <div key={order.id} className="glass-card" style={{ padding: '24px', display: 'grid', gridTemplateColumns: '1fr 1.5fr 1.5fr auto', gap: '24px', alignItems: 'center', borderLeft: `6px solid ${statusColor}`, background: statusBg }}>
+                            <div key={order.id} className="glass-card order-card-grid" style={{ padding: '24px', alignItems: 'center', borderLeft: `6px solid ${statusColor}`, background: statusBg }}>
 
                                 {/* 1. Order ID & Badge */}
                                 <div>
