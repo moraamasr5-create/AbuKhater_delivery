@@ -3,7 +3,7 @@ import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
 import { useApp } from './context/AppContext';
-import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle } from 'lucide-react';
+import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu } from 'lucide-react';
 
 const MATAREYA_AREAS = [
   'المطرية - الرئيسي',
@@ -1459,7 +1459,8 @@ function App() {
     <div className="layout" dir="rtl">
       {/* Mobile Menu Toggle */}
       <button className="menu-toggle" onClick={toggleSidebar}>
-        ☰
+        <Menu size={20} />
+        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>القائمة</span>
       </button>
 
       {/* Overlay: click outside closes menu */}
