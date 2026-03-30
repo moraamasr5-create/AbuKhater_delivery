@@ -506,8 +506,8 @@ const DashboardView = () => {
 };
 
 const SIMPLE_MENU = {
-  'سندوتشات': ['أسبايسي', 'بدون تومية','بدون شطة','بدون سلطة','بدون طحينة','بدون أضافات'],
-  'مشويات': ['سوي زيادة',  ''],
+  'سندوتشات': ['أسبايسي', 'بدون تومية', 'بدون شطة', 'بدون سلطة', 'بدون طحينة', 'بدون أضافات'],
+  'مشويات': ['سوي زيادة', ''],
   'مقبلات': ['بطاطس محمرة', 'كول سلو', 'ثومية', 'طحينة', 'مخلل'],
   'مشروبات': ['بيبسي', 'سفن اب', 'مياه معدنية', 'عصير']
 };
@@ -699,7 +699,7 @@ const ManualOrderForm = ({ onClose, initialData }) => {
               onChange={e => setFormData({ ...formData, receiptNo: e.target.value })}
             />
           </div>
-{/* 
+          {/* 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <input
               className="glass-card"
@@ -1372,7 +1372,21 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeModal, setActiveModal] = useState('none');
   const [reeditData, setReeditData] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isShiftOpen, deleteOrder } = useApp();
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
+  // Prevent scroll when sidebar is open (Mobile)
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : 'auto';
+  }, [isSidebarOpen]);
 
   const handleReedit = (order) => {
     // Pack data for the forms
@@ -1443,7 +1457,22 @@ function App() {
 
   return (
     <div className="layout" dir="rtl">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Mobile Menu Toggle */}
+      <button className="menu-toggle" onClick={toggleSidebar}>
+        ☰
+      </button>
+
+      {/* Overlay: click outside closes menu */}
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar}></div>
+      )}
+
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        isSidebarOpen={isSidebarOpen}
+        closeSidebar={closeSidebar}
+      />
       <main className="main-content">
         {isShiftOpen && (
           <div style={{ position: 'fixed', top: '24px', left: '32px', zIndex: 100, display: 'flex', gap: '12px' }}>

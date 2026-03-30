@@ -3,7 +3,7 @@ import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, Uten
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar }) => {
     const { isShiftOpen, openShift, closeShift, orders } = useApp();
 
     const pendingCount = orders.filter(o => ['pending', 'pending_timer', 'waiting_driver'].includes(o.status)).length;
@@ -17,7 +17,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     ];
 
     return (
-        <div className="sidebar">
+        <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '30px', textAlign: 'center' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src="/logo.png" alt="Abu Khater" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -29,7 +29,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 {menuItems.map(item => (
                     <button
                         key={item.id}
-                        onClick={() => setActiveTab(item.id)}
+                        onClick={() => {
+                            setActiveTab(item.id);
+                            closeSidebar();
+                        }}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -72,7 +75,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     <button
                         onClick={() => {
                             const pwd = prompt('أدخل كلمة مرور المشرف لفتح الوردية:');
-                            if (pwd === '8080') openShift();
+                            if (pwd === '8080') {
+                                openShift();
+                                closeSidebar();
+                            }
                             else alert('كلمة مرور خاطئة');
                         }}
                         className="btn-primary"
@@ -86,9 +92,13 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                         onClick={() => {
                             if (isAutoCloseTime()) {
                                 closeShift(true);
+                                closeSidebar();
                             } else {
                                 const pwd = prompt('أدخل كلمة مرور المشرف لإغلاق الوردية:');
-                                if (pwd === '8080') closeShift(false);
+                                if (pwd === '8080') {
+                                    closeShift(false);
+                                    closeSidebar();
+                                }
                                 else if (pwd !== null) alert('كلمة مرور خاطئة');
                             }
                         }}
@@ -100,8 +110,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     </button>
                 )}
             </div>
-
-
         </div>
     );
 };
