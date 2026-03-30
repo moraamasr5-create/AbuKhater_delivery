@@ -192,7 +192,7 @@ body {
   z-index: 998;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .layout {
     grid-template-columns: 80px 1fr;
   }
