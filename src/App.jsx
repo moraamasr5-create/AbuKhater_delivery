@@ -1460,7 +1460,7 @@ function App() {
       {/* Mobile Menu Toggle */}
       <button className="menu-toggle" onClick={toggleSidebar}>
         <Menu size={20} />
-        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>القائمة</span>
+        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>(☰) </span>
       </button>
 
       {/* Overlay: click outside closes menu */}
@@ -1468,9 +1468,9 @@ function App() {
         <div className="sidebar-overlay" onClick={closeSidebar}></div>
       )}
 
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         isSidebarOpen={isSidebarOpen}
         closeSidebar={closeSidebar}
       />
