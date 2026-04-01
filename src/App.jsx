@@ -3,19 +3,48 @@ import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
 import { useApp } from './context/AppContext';
-import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu } from 'lucide-react';
+import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert } from 'lucide-react';
 
-const MATAREYA_AREAS = [
-  'المطرية - الرئيسي',
-  'عزبة النخل',
-  'عين شمس الشرقية',
-  'عين شمس الغربية',
-  'حلمية الزيتون',
-  'النعام',
-  'المطرية - المسلة',
-  'المطرية - ش ترعة الإسماعيلية',
-  'اخرى (إدخال يدوي)'
+const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return (R * c).toFixed(1);
+};
+
+const AREAS_METADATA = [
+  // Zone 1: 0-3km (Base)
+  { name: 'المطرية - الرئيسي', lat: 30.126, lng: 31.298, zone: 1, fee: 20 },
+  { name: 'المسلة', lat: 30.132, lng: 31.302, zone: 1, fee: 20 },
+  { name: 'مسطرد', lat: 30.141, lng: 31.295, zone: 1, fee: 25 },
+  { name: 'الشارع الجديد', lat: 30.148, lng: 31.292, zone: 1, fee: 25 },
+
+  // Zone 2: 3-7km
+  { name: 'عين شمس', lat: 30.121, lng: 31.332, zone: 2, fee: 30 },
+  { name: 'النعام', lat: 30.115, lng: 31.318, zone: 2, fee: 35 },
+  { name: 'حلمية الزيتون', lat: 30.111, lng: 31.305, zone: 2, fee: 35 },
+  { name: 'الأميرية', lat: 30.105, lng: 31.292, zone: 2, fee: 30 },
+  { name: 'السواح', lat: 30.101, lng: 31.288, zone: 2, fee: 35 },
+
+  // Zone 3: 7-10km
+  { name: 'الخصوص', lat: 30.165, lng: 31.312, zone: 3, fee: 45 },
+  { name: 'المرج', lat: 30.155, lng: 31.345, zone: 3, fee: 50 },
+  { name: 'جسر السويس', lat: 30.115, lng: 31.365, zone: 3, fee: 55 },
+  { name: 'مصر الجديدة', lat: 30.091, lng: 31.334, zone: 3, fee: 60 },
+
+  // Zone 4: 10-15km
+  { name: 'مدينة نصر', lat: 30.061, lng: 31.335, zone: 4, fee: 75 },
+  { name: 'القلج', lat: 30.185, lng: 31.368, zone: 4, fee: 70 },
+  { name: 'الخانكة', lat: 30.215, lng: 31.378, zone: 4, fee: 80 }
 ];
+
+const MATAREYA_AREAS = AREAS_METADATA.map(a => a.name).concat(['اخرى (إدخال يدوي)']);
 
 const MANAGERS = ['أ/عبـدالله', 'أ/فتحـي', 'مدير3', 'الفرع الثاني'];
 
@@ -24,6 +53,7 @@ const PilotManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPilotName, setNewPilotName] = useState('');
   const [newPilotPhone, setNewPilotPhone] = useState('');
+  const [newPilotShift, setNewPilotShift] = useState('8:00A - 6:00P');
 
   const handleToggleShift = (pilotId, currentStatus) => {
     const password = prompt(currentStatus === 'open'
@@ -40,10 +70,11 @@ const PilotManagement = () => {
   const onAddPilot = (e) => {
     e.preventDefault();
     if (!newPilotName) return;
-    addNewPilot(newPilotName, newPilotPhone);
+    addNewPilot(newPilotName, newPilotPhone, newPilotShift);
     setShowAddModal(false);
     setNewPilotName('');
     setNewPilotPhone('');
+    setNewPilotShift('8:00A - 6:00P');
   };
 
   return (
@@ -75,6 +106,14 @@ const PilotManagement = () => {
                 style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                 required
               />
+              <input
+                placeholder="مواعيد العمل (مثال: 8:00A - 6:00P)"
+                value={newPilotShift}
+                onChange={e => setNewPilotShift(e.target.value)}
+                className="glass-card"
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                required
+              />
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--accent)' }}>حفظ</button>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '8px', borderRadius: '8px', cursor: 'pointer', flex: 0.5 }}>إلغاء</button>
@@ -91,28 +130,10 @@ const PilotManagement = () => {
               <h4 style={{ fontSize: '1.1rem' }}>{pilot.name}</h4>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{pilot.phone}</p>
 
-              {(() => {
-                const now = new Date();
-                const sessionMinutes = (pilot.shiftStatus === 'open' && pilot.lastOpenedAt)
-                  ? Math.floor((now - new Date(pilot.lastOpenedAt)) / (1000 * 60))
-                  : 0;
-                const totalWorked = (pilot.totalMinutes || 0) + sessionMinutes;
-                const target = 600; // 10 hours
-                const remaining = target - totalWorked;
-
-                if (remaining <= 0) {
-                  return <p style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>✅ اكتملت الـ 10 ساعات</p>;
-                }
-
-                const remainsH = Math.floor(remaining / 60);
-                const remainsM = remaining % 60;
-
-                return (
-                  <p style={{ color: 'var(--warning)', fontSize: '0.85rem' }}>
-                    باقي: {remainsH > 0 && `${remainsH}h `}{remainsM}m (لإتمام 10س)
-                  </p>
-                );
-              })()}
+              <p style={{ color: 'var(--warning)', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={12} />
+                الوردية: {pilot.shift || 'غير محدد'}
+              </p>
             </div>
             <button
               onClick={() => handleToggleShift(pilot.id, pilot.shiftStatus)}
@@ -457,7 +478,9 @@ const DashboardView = () => {
                       <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isOut ? 'var(--warning)' : 'var(--success)', marginTop: '6px' }}></div>
                       <div>
                         <p style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{p.name}</p>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isOut ? 'خارج للتوصيل 🏍️' : 'متاح في المطعم ✅'}</p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {isOut ? 'خارج للتوصيل 🏍️' : 'متاح في المطعم ✅'} | {p.shift || '8:00A - 6:00P'}
+                        </p>
                       </div>
                     </div>
                     <span style={{ fontSize: '0.8rem', background: currentLoad >= 7 ? 'var(--danger)' : 'var(--primary)', padding: '2px 10px', borderRadius: '6px', color: '#000', height: 'fit-content' }}>
@@ -474,8 +497,9 @@ const DashboardView = () => {
             <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>شيفت مغلق ({closedPilots.length})</h4>
             <div className="flex flex-wrap" style={{ gap: '10px' }}>
               {closedPilots.map(p => (
-                <span key={p.id} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                  {p.name}
+                <span key={p.id} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--border)', display: 'inline-flex', gap: '4px' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>({p.shift || '8:00A - 6:00P'})</span>
                 </span>
               ))}
               {closedPilots.length === 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>لا يوجد طيارين مسجلين</p>}
@@ -497,13 +521,18 @@ const SIMPLE_MENU = {
 const ManualOrderForm = ({ onClose, initialData }) => {
   const { addOrder, sendToN8N } = useApp();
   const [formData, setFormData] = useState(initialData?.formData || {
-    receiptNo: '', customerName: '', phone: '', area: MATAREYA_AREAS[0],
-    customArea: '', total: '', deliveryFee: 20, itemsDescription: '',
+    receiptNo: '', customerName: '', phone: '', area: '',
+    lat: null, lng: null, zone: null, distance: 0,
+    customArea: '', total: 0, deliveryFee: 20, itemsDescription: '',
     paymentMethod: 'Cash', paymentProof: null
   });
   const [selectedItems, setSelectedItems] = useState(initialData?.selectedItems || {});
   const [activeCategory, setActiveCategory] = useState('سندوتشات');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [areaSearch, setAreaSearch] = useState('');
+  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
+
+  const isOutsideRadius = formData.distance > 15;
 
   const deliveryFees = Array.from({ length: 17 }, (_, i) => 20 + i * 5);
 
@@ -542,9 +571,12 @@ const ManualOrderForm = ({ onClose, initialData }) => {
     if (!formData.receiptNo) return alert('رقم البون مطلوب');
     const itemsList = Object.entries(selectedItems).map(([name, count]) => ({ name, count }));
     addOrder({
-      id: formData.receiptNo, type: 'restaurant', customerName: formData.customerName,
-      phone: formData.phone, area: formData.area === 'اخرى (إدخال يدوي)' ? formData.customArea : formData.area,
-      total: Number(formData.total) || 0, deliveryFee: Number(formData.deliveryFee),
+      id: formData.receiptNo, type: 'restaurant', customerName: formData.customerName || "عميل مطعم",
+      phone: formData.phone, area: formData.area || "المطرية",
+      lat: formData.lat, lng: formData.lng,
+      total: 0, // Removed per request
+      deliveryFee: Number(formData.deliveryFee),
+      source: 'manual', // 📞 طلب داخلي (كول سنتر)
       itemsDescription: itemsList.map(i => `${i.count}x ${i.name}`).join(', ') + (formData.itemsDescription ? ` (${formData.itemsDescription})` : ''),
       items: itemsList, itemsCount: itemsList.reduce((acc, curr) => acc + curr.count, 0),
       paymentMethod: formData.paymentMethod, paymentProof: formData.paymentProof
@@ -562,22 +594,197 @@ const ManualOrderForm = ({ onClose, initialData }) => {
         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <h2 className="flex" style={{ fontSize: '1.2rem' }}><Monitor size={22} color="var(--primary)" /> تفاصيل الأوردر</h2>
           <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', textAlign: 'center' }}>
-            <label style={{ color: 'var(--primary)', fontWeight: 'bold' }}>رقم بون الكول سنتر</label>
-            <input type="text" style={{ background: 'transparent', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.6rem', fontWeight: '900', textAlign: 'center' }} value={formData.receiptNo} onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} required autoFocus />
+            <label style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>رقم بون الكول سنتر</label>
+            <input 
+              type="text" 
+              style={{ background: 'transparent', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.6rem', fontWeight: '900', textAlign: 'center' }} 
+              value={formData.receiptNo} 
+              onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} 
+              required 
+              autoFocus 
+              placeholder="000"
+            />
           </div>
+
+          {/* 🧠 Smart Area Search (Autocomplete) */}
+          <div style={{ position: 'relative' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>📍 ابحث عن المنطقة</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text"
+                placeholder="اكتب اسم المنطقة (مثلاً: المطرية)..."
+                value={areaSearch}
+                onChange={e => {
+                  setAreaSearch(e.target.value);
+                  setShowAreaSuggestions(true);
+                }}
+                onFocus={() => setShowAreaSuggestions(true)}
+                style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', width: '100%', border: '1px solid var(--border)' }}
+              />
+              <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+            </div>
+
+            {showAreaSuggestions && areaSearch && (
+              <div className="glass-card" style={{ 
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, 
+                maxHeight: '280px', overflowY: 'auto', marginTop: '8px', 
+                border: '1px solid var(--border)', background: '#111827',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+              }}>
+                {[1, 2, 3, 4].map(zoneNum => {
+                  const zoneAreas = AREAS_METADATA.filter(a => a.zone === zoneNum && a.name.includes(areaSearch));
+                  if (zoneAreas.length === 0) return null;
+                  return (
+                    <div key={zoneNum}>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 16px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                        النطاق {zoneNum} (Zone {zoneNum})
+                      </div>
+                      {zoneAreas.map(area => {
+                        const dist = calculateDistance(RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng, area.lat, area.lng);
+                        return (
+                          <div 
+                            key={area.name} 
+                            onClick={() => {
+                              setFormData({ 
+                                ...formData, 
+                                area: area.name, 
+                                lat: area.lat, 
+                                lng: area.lng, 
+                                zone: area.zone, 
+                                distance: dist,
+                                deliveryFee: area.fee 
+                              });
+                              setAreaSearch(area.name);
+                              setShowAreaSuggestions(false);
+                            }}
+                            className="hover-scale"
+                            style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}
+                          >
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>{area.name}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '8px' }}>({dist} كم)</span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>{area.fee} ج.م</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Location Feedback Badges */}
+          {formData.area && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                 <Ruler size={14} /> {formData.distance} كم من المطعم
+               </div>
+               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.75rem' }}>
+                 نطاق التوصيل: {formData.zone}
+               </div>
+               {isOutsideRadius && (
+                  <div style={{ width: '100%', padding: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '8px', marginTop: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={18} /> خارج نطاق التوصيل (أكثر من 15كم)
+                  </div>
+               )}
+            </div>
+          )}
+
           <div className="grid" style={{ gap: '12px' }}>
-            <select style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px' }} value={formData.area} onChange={e => setFormData({ ...formData, area: e.target.value })}>
-              {MATAREYA_AREAS.map(area => <option key={area} value={area}>{area}</option>)}
-            </select>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '-4px' }}>💰 خدمة التوصيل (مثبتة حسب النطاق)</label>
+            <input 
+                readOnly 
+                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'not-allowed' }}
+                value={`${formData.deliveryFee} ج.م`}
+            />
           </div>
-          <div className="grid-2" style={{ gap: '12px' }}>
-            <input style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px' }} placeholder="الإجمالي" value={formData.total} onChange={e => setFormData({ ...formData, total: e.target.value })} />
-            <select style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px' }} value={formData.deliveryFee} onChange={e => setFormData({ ...formData, deliveryFee: e.target.value })}>
-              {deliveryFees.map(fee => <option key={fee} value={fee}>{fee} ج.م</option>)}
-            </select>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>💳 طريقة الدفع</label>
+            <div className="flex" style={{ gap: '8px' }}>
+              {[
+                { id: 'Cash', label: 'كاش', color: '#10b981' },
+                { id: 'vodafone_cash', label: 'فودافون كاش', color: '#ef4444' },
+                { id: 'instapay', label: 'انستا باى', color: '#8b5cf6' }
+              ].map(method => (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, paymentMethod: method.id })}
+                  style={{
+                    flex: 1,
+                    padding: '12px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    border: '2px solid',
+                    borderColor: formData.paymentMethod === method.id ? method.color : 'rgba(255,255,255,0.05)',
+                    background: formData.paymentMethod === method.id ? `${method.color}15` : 'rgba(255,255,255,0.05)',
+                    color: formData.paymentMethod === method.id ? method.color : 'var(--text-muted)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {method.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex" style={{ gap: '12px', marginTop: 'auto' }}>
-            <button onClick={handleSubmit} className="btn-primary" style={{ flex: 2, justifyContent: 'center' }}>حفظ</button>
+
+          {(formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && (
+            <div style={{ 
+              background: 'rgba(255,255,255,0.03)', 
+              padding: '16px', 
+              borderRadius: '12px', 
+              border: '1px dashed var(--border)',
+              textAlign: 'center'
+            }}>
+              <p style={{ fontSize: '0.85rem', marginBottom: '10px', color: 'var(--accent)', fontWeight: 'bold' }}>
+                📸 صورة إيصال التحويل (إجباري)
+              </p>
+              <input 
+                required 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setFormData({ ...formData, paymentProof: reader.result });
+                    reader.readAsDataURL(file);
+                  }
+                }} 
+                style={{ fontSize: '0.8rem', color: 'white', cursor: 'pointer' }} 
+              />
+              {formData.paymentProof && (
+                 <img 
+                    src={formData.paymentProof} 
+                    alt="Success" 
+                    style={{ marginTop: '12px', width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--accent)' }} 
+                 />
+              )}
+            </div>
+          )}
+
+          <div className="flex" style={{ gap: '12px', marginTop: '20px' }}>
+            <button 
+                onClick={handleSubmit} 
+                disabled={
+                    isOutsideRadius || 
+                    !formData.receiptNo || 
+                    !formData.area ||
+                    ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)
+                }
+                className="btn-primary" 
+                style={{ 
+                    flex: 2, justifyContent: 'center', height: '50px', fontSize: '1.1rem',
+                    opacity: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
+                    cursor: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
+                }}
+            >
+              حفظ الأوردر
+            </button>
             <button onClick={onClose} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'white' }}>إلغاء</button>
           </div>
         </div>
@@ -635,6 +842,7 @@ const ExternalOrderForm = ({ onClose, initialData }) => {
       area: formData.area,
       total: 0, // Usually prepaid or separate
       deliveryFee: Number(formData.deliveryFee),
+      source: 'talabat', // 📱 طلب خارجي عبر تابلت (طلبات)
       itemsDescription: `طلب ${formData.platform}`,
       itemsCount: 1,
       paymentMethod: formData.paymentMethod,
@@ -863,6 +1071,7 @@ const ExtraTripForm = ({ onClose, initialData }) => {
       area: 'مشوار خاص',
       total: 0,
       deliveryFee: Number(formData.value),
+      source: 'external', // 🏍️ مشوار خارجي (توصيل فقط)
       itemsDescription: formData.notes,
       itemsCount: 1
     });
@@ -924,7 +1133,14 @@ function App() {
   const [activeModal, setActiveModal] = useState('none');
   const [reeditData, setReeditData] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { isShiftOpen, deleteOrder } = useApp();
+  const { isShiftOpen, deleteOrder, userRole } = useApp();
+
+  // 🟢 حماية لضمان أن الطيار مبيشوفش غير صندوق الوارد
+  useEffect(() => {
+    if (userRole === 'driver' && activeTab !== 'inbox') {
+      setActiveTab('inbox');
+    }
+  }, [userRole, activeTab]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(prev => !prev);
@@ -1027,7 +1243,8 @@ function App() {
       />
       <main className="main-content">
         <div className="app-container">
-          {isShiftOpen && (
+          {/* 🔴 أزرار الإضافة - مسموحة للمدير فقط */}
+          {isShiftOpen && userRole === 'admin' && (
             <div className="flex flex-wrap" style={{ marginBottom: '24px', gap: '12px' }}>
               <button
                 onClick={() => setActiveModal('manual')}
@@ -1063,11 +1280,12 @@ function App() {
           {activeModal === 'trip' && <ExtraTripForm onClose={handleCloseModal} initialData={reeditData} />}
 
           <div style={{ position: 'relative' }}>
-            {activeTab === 'dashboard' && <DashboardView />}
+            {/* 🔐 تأمين الصفحات - الأدمن بس هو اللي يفتح التقارير والطيارين والداشبورد */}
+            {activeTab === 'dashboard' && userRole === 'admin' && <DashboardView />}
             {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
-            {activeTab === 'pilots' && <PilotManagement />}
-            {activeTab === 'reservations' && <ReservationView />}
-            {activeTab === 'reports' && <ReportsView />}
+            {activeTab === 'pilots' && userRole === 'admin' && <PilotManagement />}
+            {activeTab === 'reservations' && userRole === 'admin' && <ReservationView />}
+            {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
         </div>
       </main>

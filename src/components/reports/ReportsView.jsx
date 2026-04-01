@@ -16,6 +16,7 @@ const ReportsView = () => {
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 10px; text-align: right;">${p.name}</td>
                 <td style="padding: 10px; text-align: center;">${p.restaurantOrdersCount || 0}</td>
+                <td style="padding: 10px; text-align: center;">${p.onlineOrdersCount || 0}</td>
                 <td style="padding: 10px; text-align: center;">${p.talabatOrdersCount || 0}</td>
                 <td style="padding: 10px; text-align: center;">${p.tripsCount || 0}</td>
                 <td style="padding: 10px; text-align: left; font-weight: bold;">${Math.floor(p.totalEarnings)} ج.م</td>
@@ -50,6 +51,7 @@ const ReportsView = () => {
                             <tr>
                                 <th>الطيار</th>
                                 <th style="text-align: center;">مطعم</th>
+                                <th style="text-align: center;">أونلاين</th>
                                 <th style="text-align: center;">طلبات</th>
                                 <th style="text-align: center;">مشاوير</th>
                                 <th style="text-align: left;">المستحقات</th>
@@ -137,7 +139,7 @@ const ReportsView = () => {
                     <td style="padding: 10px; text-align: right;">#${o.originalId || o.id}</td>
                     <td style="padding: 10px; text-align: right;">${new Date(o.timestamp).toLocaleTimeString('ar-EG')}</td>
                     <td style="padding: 10px; text-align: right;">
-                        ${o.type === 'trip' ? 'مشوار' : (o.type === 'talabat' || o.type === 'external') ? 'طلبات' : 'مطعم'}
+                        ${o.source === 'online' ? 'أونلاين' : o.source === 'talabat' ? 'طلبات (Talabat)' : o.source === 'external' ? 'مشوار' : 'مطعم'}
                         ${isFailed ? '<br/><small>(فشل: ' + o.failureReason + ')</small>' : ''}
                     </td>
                     <td style="padding: 10px; text-align: left;">${o.deliveryFee} ج.م</td>
@@ -173,9 +175,10 @@ const ReportsView = () => {
                 <div class="section">
                     <h2 style="border-right: 5px solid #333; padding-right: 15px;">ملخص الوردية</h2>
                     <div class="summary-grid">
-                        <div class="summary-item"><div>مطعم</div><strong>${pilot.restaurantOrdersCount || 0}</strong></div>
-                        <div class="summary-item"><div>طلبات</div><strong>${pilot.talabatOrdersCount || 0}</strong></div>
-                        <div class="summary-item"><div>مشاوير</div><strong>${pilot.tripsCount || 0}</strong></div>
+                        <div className="summary-item"><div>مطعم</div><strong>${pilot.restaurantOrdersCount || 0}</strong></div>
+                        <div className="summary-item"><div>أونلاين</div><strong>${pilot.onlineOrdersCount || 0}</strong></div>
+                        <div className="summary-item"><div>طلبات</div><strong>${pilot.talabatOrdersCount || 0}</strong></div>
+                        <div className="summary-item"><div>مشاوير</div><strong>${pilot.tripsCount || 0}</strong></div>
                         <div class="summary-item"><div>ساعات</div><strong>${(pilot.totalMinutes / 60).toFixed(1)} س</strong></div>
                     </div>
                 </div>
@@ -240,23 +243,19 @@ const ReportsView = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
                                 {(() => {
                                     const pOrders = getPilotOrders(selectedPilotDetails.id);
-                                    const restaurantCount = pOrders.filter(o => o.type === 'restaurant').length;
-                                    const talabatCount = pOrders.filter(o => o.type === 'talabat' || o.type === 'external').length;
-                                    const tripCount = pOrders.filter(o => o.type === 'trip').length;
-
                                     return (
                                         <>
                                             <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
                                                 <div style={{ fontSize: '0.8rem', color: '#60a5fa', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><Home size={14} /> مطعم</div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{restaurantCount}</div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{pOrders.filter(o => o.source === 'manual').length}</div>
+                                            </div>
+                                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '0.8rem', color: '#a78bfa', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><Globe size={14} /> أونلاين</div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{pOrders.filter(o => o.source === 'online').length}</div>
                                             </div>
                                             <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.8rem', color: '#fbbf24', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><Globe size={14} /> طلبات</div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{talabatCount}</div>
-                                            </div>
-                                            <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.8rem', color: '#34d399', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><Bike size={14} /> مشاوير</div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{tripCount}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#fbbf24', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><UtensilsCrossed size={14} /> طلبات</div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'white' }}>{pOrders.filter(o => o.source === 'talabat').length}</div>
                                             </div>
                                         </>
                                     );
@@ -285,7 +284,7 @@ const ReportsView = () => {
                                                     <td style={{ padding: '12px 0' }}>#{order.originalId || order.id}</td>
                                                     <td style={{ padding: '12px 0' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span>{order.type === 'trip' ? 'مشوار' : (order.type === 'talabat' || order.type === 'external') ? 'طلبات' : 'مطعم'}</span>
+                                                            <span>{order.source === 'online' ? 'أونلاين' : order.source === 'talabat' ? 'طلبات (Talabat)' : order.source === 'external' ? 'مشوار' : 'مطعم'}</span>
                                                             {isFailed && <span style={{ fontSize: '0.7rem', color: 'var(--danger)' }}>فشل: {order.failureReason}</span>}
                                                         </div>
                                                     </td>
@@ -359,9 +358,18 @@ const ReportsView = () => {
                             <h4 style={{ fontSize: '1.5rem', fontWeight: '700' }}>
                                 {activeStats.totalOrders}
                                 <small style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--text-muted)', marginRight: '8px' }}>
-                                    ({activeStats.totalOrders - activeStats.pilotPerformance.reduce((acc, p) => acc + (p.tripsCount || 0), 0)} طلب + {activeStats.pilotPerformance.reduce((acc, p) => acc + (p.tripsCount || 0), 0)} مشوار)
+                                    ({activeStats.pilotPerformance.reduce((acc, p) => acc + (p.restaurantOrdersCount || 0), 0)} مطعم | {activeStats.pilotPerformance.reduce((acc, p) => acc + (p.onlineOrdersCount || 0), 0)} أونلاين | {activeStats.pilotPerformance.reduce((acc, p) => acc + (p.talabatOrdersCount || 0), 0)} طلبات || {activeStats.pilotPerformance.reduce((acc, p) => acc + (p.tripsCount || 0), 0)} م )
                                 </small>
                             </h4>
+                        </div>
+
+                        {/* 🟣 New Online Card */}
+                        <div style={{ padding: '20px', borderRadius: '16px', background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <p style={{ color: '#a78bfa', fontSize: '0.8rem', marginBottom: '8px' }}>أونلاين (الموقع)</p>
+                                <Globe size={16} color="#a78bfa" style={{ marginBottom: '8px' }} />
+                            </div>
+                            <h4 style={{ fontSize: '1.5rem', fontWeight: '900', color: '#8b5cf6' }}>{activeStats.onlineOrdersCount || 0} طلب</h4>
                         </div>
                         <div style={{ padding: '20px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '8px' }}>متوسط التأخير</p>
@@ -470,92 +478,114 @@ const ReportsView = () => {
                         <Bike size={18} /> تفصيل مستحقات الطيارين
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-                        {activeStats.pilotPerformance.map(pilot => (
-                            <div key={pilot.id} style={{ padding: '20px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                                    <span style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--primary)' }}>{pilot.name}</span>
-                                    {showDues ? (
-                                        <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '1.2rem', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 12px', borderRadius: '8px' }}>
-                                            {Math.floor(pilot.totalEarnings)} ج.م
-                                        </span>
-                                    ) : (
-                                        <span style={{ color: 'var(--text-muted)' }}>****</span>
-                                    )}
-                                </div>
+                        {activeStats.pilotPerformance
+                            .sort((a, b) => {
+                                // 🟢 1. الترتيب حسب الحالة (مفتوح أولاً)
+                                if (a.shiftStatus === 'open' && b.shiftStatus === 'closed') return -1;
+                                if (a.shiftStatus === 'closed' && b.shiftStatus === 'open') return 1;
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-                                    {/* Workload Stats */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        <span>🏠 مطعم: <strong>{pilot.restaurantOrdersCount || 0}</strong></span>
-                                        <span>🌐 طلبات: <strong>{pilot.talabatOrdersCount || 0}</strong></span>
-                                        <span>🏍️ مشاوير: <strong>{pilot.tripsCount || 0}</strong></span>
-                                        <span>🕒 عمل: <strong>{(pilot.totalMinutes / 60).toFixed(1)} س</strong></span>
+                                // 🏆 2. داخل الأونلاين: الترتيب حسب الأكثر طلباً (مطعم + طلبات + مشاوير)
+                                if (a.shiftStatus === 'open' && b.shiftStatus === 'open') {
+                                    const aTotal = (a.restaurantOrdersCount || 0) + (a.talabatOrdersCount || 0) + (a.tripsCount || 0);
+                                    const bTotal = (b.restaurantOrdersCount || 0) + (b.talabatOrdersCount || 0) + (b.tripsCount || 0);
+                                    return bTotal - aTotal;
+                                }
+                                return 0;
+                            })
+                            .map(pilot => (
+                                <div key={pilot.id} style={{ padding: '20px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', position: 'relative', opacity: pilot.shiftStatus === 'closed' ? 0.7 : 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', align_items: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pilot.shiftStatus === 'open' ? '#10b981' : '#ef4444', boxShadow: pilot.shiftStatus === 'open' ? '0 0 10px #10b981' : 'none' }}></div>
+                                            <span style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--primary)' }}>{pilot.name}</span>
+                                        </div>
+                                        {showDues ? (
+                                            <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '1.2rem', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 12px', borderRadius: '8px' }}>
+                                                {Math.floor(pilot.totalEarnings)} ج.م
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: 'var(--text-muted)' }}>****</span>
+                                        )}
                                     </div>
 
-                                    {showDues && (
-                                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px dashed var(--border)' }}>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>تفاصيل الأرباح:</p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', fontSize: '0.9rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Home size={14} /> مطعم:</span>
-                                                    <span style={{ fontWeight: 'bold' }}>{pilot.restaurantEarnings}</span>
+                                        {/* Workload Stats */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            <span>🏠 مطعم: <strong>{pilot.restaurantOrdersCount || 0}</strong></span>
+                                            <span style={{ color: '#a78bfa' }}>🟣 أونلاين: <strong>{pilot.onlineOrdersCount || 0}</strong></span>
+                                            <span>🌐 طلبات: <strong>{pilot.talabatOrdersCount || 0}</strong></span>
+                                            <span>🏍️ مشاوير: <strong>{pilot.tripsCount || 0}</strong></span>
+                                            <span>🕒 عمل: <strong>{(pilot.totalMinutes / 60).toFixed(1)} س</strong></span>
+                                        </div>
+
+                                        {showDues && (
+                                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>تفاصيل الأرباح:</p>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', fontSize: '0.9rem' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Home size={14} /> مطعم:</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{pilot.restaurantEarnings}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a78bfa' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Globe size={14} /> أونلاين:</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{pilot.onlineEarnings}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><UtensilsCrossed size={14} /> طلبات:</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{pilot.talabatEarnings}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Bike size={14} /> مشاوير:</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{pilot.tripEarnings}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent)' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Clock size={14} /> حضور:</span>
+                                                        <span style={{ fontWeight: 'bold' }}>{pilot.attendancePay}</span>
+                                                    </div>
                                                 </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Globe size={14} /> طلبات:</span>
-                                                    <span style={{ fontWeight: 'bold' }}>{pilot.talabatEarnings}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Bike size={14} /> مشاوير:</span>
-                                                    <span style={{ fontWeight: 'bold' }}>{pilot.tripEarnings}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent)' }}>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Clock size={14} /> حضور:</span>
-                                                    <span style={{ fontWeight: 'bold' }}>{pilot.attendancePay}</span>
+
+                                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                                    <span>إجمالي التوصيل:</span>
+                                                    <strong>{pilot.feeEarnings} ج.م</strong>
                                                 </div>
                                             </div>
+                                        )}
 
-                                            <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                                <span>إجمالي التوصيل:</span>
-                                                <strong>{pilot.feeEarnings} ج.م</strong>
+                                        {!showDues && (
+                                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
+                                                تفاصيل المستحقات مخفية 🔒
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
 
-                                    {!showDues && (
-                                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
-                                            تفاصيل المستحقات مخفية 🔒
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                    <button
-                                        onClick={() => setSelectedPilotDetails(pilot)}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'background 0.2s' }}
-                                    >
-                                        <FileText size={16} /> كشف تفصيلي
-                                    </button>
-                                    {showDues && (
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                                         <button
-                                            onClick={() => {
-                                                const element = document.createElement("a");
-                                                const file = new Blob([JSON.stringify(pilot, null, 2)], { type: 'application/json' });
-                                                element.href = URL.createObjectURL(file);
-                                                element.download = `Pilot_${pilot.name.replace(/\s+/g, '_')}_Report.json`;
-                                                document.body.appendChild(element);
-                                                element.click();
-                                            }}
-                                            title="حفظ الملف"
-                                            style={{ padding: '0 16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid var(--warning)', color: 'var(--warning)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            onClick={() => setSelectedPilotDetails(pilot)}
+                                            style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'background 0.2s' }}
                                         >
-                                            <Download size={18} />
+                                            <FileText size={16} /> كشف تفصيلي
                                         </button>
-                                    )}
+                                        {showDues && (
+                                            <button
+                                                onClick={() => {
+                                                    const element = document.createElement("a");
+                                                    const file = new Blob([JSON.stringify(pilot, null, 2)], { type: 'application/json' });
+                                                    element.href = URL.createObjectURL(file);
+                                                    element.download = `Pilot_${pilot.name.replace(/\s+/g, '_')}_Report.json`;
+                                                    document.body.appendChild(element);
+                                                    element.click();
+                                                }}
+                                                title="حفظ الملف"
+                                                style={{ padding: '0 16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid var(--warning)', color: 'var(--warning)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                                <Download size={18} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
             ) : (
@@ -611,7 +641,7 @@ const ReportsView = () => {
                                         <p style={{ fontWeight: '600' }}>
                                             {report.ordersCount}
                                             <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>
-                                                ({(report.archivedOrders || []).filter(o => o.type !== 'trip').length} طلب + {(report.archivedOrders || []).filter(o => o.type === 'trip').length} مشوار)
+                                                ({(report.archivedOrders || []).filter(o => o.source === 'manual').length} مطعم | {(report.archivedOrders || []).filter(o => o.source === 'online').length} أونلاين | {(report.archivedOrders || []).filter(o => o.source === 'talabat').length} طلبات)
                                             </small>
                                         </p>
                                     </div>
@@ -631,9 +661,10 @@ const ReportsView = () => {
 
                                                     return (
                                                         <>
-                                                            <span>🏠 مطعم: {restaurantDues}</span>
-                                                            <span>🌐 طلبات: {talabatDues}</span>
-                                                            <span>🏍️ مشاوير: {tripDues}</span>
+                                                            <span>🏠 مطعم: {(report.archivedOrders || []).filter(o => o.source === 'manual').reduce((sum, o) => sum + (o.deliveryFee / 2), 0)}</span>
+                                                            <span style={{ color: '#a78bfa' }}>🟣 أونلاين: {(report.archivedOrders || []).filter(o => o.source === 'online').reduce((sum, o) => sum + (o.deliveryFee / 2), 0)}</span>
+                                                            <span>🌐 طلبات: {(report.archivedOrders || []).filter(o => o.source === 'talabat').reduce((sum, o) => sum + (o.deliveryFee / 2), 0)}</span>
+                                                            <span>🏍️ مشاوير: {(report.archivedOrders || []).filter(o => o.source === 'external').reduce((sum, o) => sum + o.deliveryFee, 0)}</span>
                                                             <span>🕒 حضور: {report.totalAttendancePay}</span>
                                                         </>
                                                     );

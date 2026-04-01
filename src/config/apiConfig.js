@@ -9,8 +9,11 @@ export const API_CONFIG = {
     N8N_SEND_URL: 'https://restaurant1abukhater.app.n8n.cloud/webhook-test/OrderReview',
 
     // 2. رابط جلب الطلبات (Polling)
-    // يُستخدم لسحب الطلبات الجديدة القادمة من "أونلاين" بشكل آلي كل 15 ثانية
+    // يُستخدم لسحب الطلبات الجديدة القادمة من "أونلاين" بشكل آلي كل 10 ثانية
     N8N_FETCH_URL: 'https://restaurant1abukhater.app.n8n.cloud/webhook-test/GetNewOrders',
+
+    // رابط تحديث حالة الطلب
+    N8N_UPDATE_STATUS_URL: 'https://restaurant1abukhater.app.n8n.cloud/webhook-test/update-status',
 
     // 3. روابط التنبيهات الصوتية
     // تعليق: يمكنك تغيير الرابط بأي ملف صوتي MP3 آخر
@@ -20,6 +23,6 @@ export const API_CONFIG = {
     },
 
     // 4. إعدادات النظام (System Config)
-    POLLING_INTERVAL: 15000, // سرعة فحص الطلبات الجديدة بالمللي ثانية
-    AUTO_REFRESH: false      // تعطيل التحديث التلقائي (الاعتماد على المزامنة اليدوية فقط)
+    POLLING_INTERVAL: 10000, // فحص الطلبات كل 10 ثواني (مثل طلبات)
+    AUTO_REFRESH: true       // تفعيل التحديث التلقائي
 };
