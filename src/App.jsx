@@ -3,19 +3,48 @@ import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
 import { useApp } from './context/AppContext';
-import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu } from 'lucide-react';
+import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert } from 'lucide-react';
 
-const MATAREYA_AREAS = [
-  'المطرية - الرئيسي',
-  'عزبة النخل',
-  'عين شمس الشرقية',
-  'عين شمس الغربية',
-  'حلمية الزيتون',
-  'النعام',
-  'المطرية - المسلة',
-  'المطرية - ش ترعة الإسماعيلية',
-  'اخرى (إدخال يدوي)'
+const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return (R * c).toFixed(1);
+};
+
+const AREAS_METADATA = [
+  // Zone 1: 0-3km (Base)
+  { name: 'المطرية - الرئيسي', lat: 30.126, lng: 31.298, zone: 1, fee: 20 },
+  { name: 'المسلة', lat: 30.132, lng: 31.302, zone: 1, fee: 20 },
+  { name: 'مسطرد', lat: 30.141, lng: 31.295, zone: 1, fee: 25 },
+  { name: 'الشارع الجديد', lat: 30.148, lng: 31.292, zone: 1, fee: 25 },
+
+  // Zone 2: 3-7km
+  { name: 'عين شمس', lat: 30.121, lng: 31.332, zone: 2, fee: 30 },
+  { name: 'النعام', lat: 30.115, lng: 31.318, zone: 2, fee: 35 },
+  { name: 'حلمية الزيتون', lat: 30.111, lng: 31.305, zone: 2, fee: 35 },
+  { name: 'الأميرية', lat: 30.105, lng: 31.292, zone: 2, fee: 30 },
+  { name: 'السواح', lat: 30.101, lng: 31.288, zone: 2, fee: 35 },
+
+  // Zone 3: 7-10km
+  { name: 'الخصوص', lat: 30.165, lng: 31.312, zone: 3, fee: 45 },
+  { name: 'المرج', lat: 30.155, lng: 31.345, zone: 3, fee: 50 },
+  { name: 'جسر السويس', lat: 30.115, lng: 31.365, zone: 3, fee: 55 },
+  { name: 'مصر الجديدة', lat: 30.091, lng: 31.334, zone: 3, fee: 60 },
+
+  // Zone 4: 10-15km
+  { name: 'مدينة نصر', lat: 30.061, lng: 31.335, zone: 4, fee: 75 },
+  { name: 'القلج', lat: 30.185, lng: 31.368, zone: 4, fee: 70 },
+  { name: 'الخانكة', lat: 30.215, lng: 31.378, zone: 4, fee: 80 }
 ];
+
+const MATAREYA_AREAS = AREAS_METADATA.map(a => a.name).concat(['اخرى (إدخال يدوي)']);
 
 const MANAGERS = ['أ/عبـدالله', 'أ/فتحـي', 'مدير3', 'الفرع الثاني'];
 
@@ -24,6 +53,7 @@ const PilotManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPilotName, setNewPilotName] = useState('');
   const [newPilotPhone, setNewPilotPhone] = useState('');
+  const [newPilotShift, setNewPilotShift] = useState('8:00A - 6:00P');
 
   const handleToggleShift = (pilotId, currentStatus) => {
     const password = prompt(currentStatus === 'open'
@@ -40,10 +70,11 @@ const PilotManagement = () => {
   const onAddPilot = (e) => {
     e.preventDefault();
     if (!newPilotName) return;
-    addNewPilot(newPilotName, newPilotPhone);
+    addNewPilot(newPilotName, newPilotPhone, newPilotShift);
     setShowAddModal(false);
     setNewPilotName('');
     setNewPilotPhone('');
+    setNewPilotShift('8:00A - 6:00P');
   };
 
   return (
@@ -75,6 +106,14 @@ const PilotManagement = () => {
                 style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                 required
               />
+              <input
+                placeholder="مواعيد العمل (مثال: 8:00A - 6:00P)"
+                value={newPilotShift}
+                onChange={e => setNewPilotShift(e.target.value)}
+                className="glass-card"
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                required
+              />
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--accent)' }}>حفظ</button>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '8px', borderRadius: '8px', cursor: 'pointer', flex: 0.5 }}>إلغاء</button>
@@ -91,28 +130,10 @@ const PilotManagement = () => {
               <h4 style={{ fontSize: '1.1rem' }}>{pilot.name}</h4>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{pilot.phone}</p>
 
-              {(() => {
-                const now = new Date();
-                const sessionMinutes = (pilot.shiftStatus === 'open' && pilot.lastOpenedAt)
-                  ? Math.floor((now - new Date(pilot.lastOpenedAt)) / (1000 * 60))
-                  : 0;
-                const totalWorked = (pilot.totalMinutes || 0) + sessionMinutes;
-                const target = 600; // 10 hours
-                const remaining = target - totalWorked;
-
-                if (remaining <= 0) {
-                  return <p style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>✅ اكتملت الـ 10 ساعات</p>;
-                }
-
-                const remainsH = Math.floor(remaining / 60);
-                const remainsM = remaining % 60;
-
-                return (
-                  <p style={{ color: 'var(--warning)', fontSize: '0.85rem' }}>
-                    باقي: {remainsH > 0 && `${remainsH}h `}{remainsM}m (لإتمام 10س)
-                  </p>
-                );
-              })()}
+              <p style={{ color: 'var(--warning)', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={12} />
+                الوردية: {pilot.shift || 'غير محدد'}
+              </p>
             </div>
             <button
               onClick={() => handleToggleShift(pilot.id, pilot.shiftStatus)}
@@ -295,23 +316,23 @@ const DashboardView = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="grid" style={{ gap: '32px' }}>
       {editModalData && <EditOrderModal order={editModalData} onClose={() => setEditModalData(null)} />}
 
       {delayedOrders.length > 0 && (
-        <div className="glass-card" style={{
-          background: 'rgba(220, 38, 38, 0.2)',
-          border: '1px solid var(--danger)',
-          padding: '16px',
+        <div className="card" style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          borderColor: 'var(--danger)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '16px',
+          padding: '16px',
           animation: 'pulse 2s infinite'
         }}>
           <AlertTriangle color="var(--danger)" size={24} />
           <div>
-            <h3 style={{ color: 'var(--danger)', fontWeight: 'bold' }}>تنبيه: يوجد {delayedOrders.length} طلبات متأخرة!</h3>
-            <p style={{ fontSize: '0.9rem', color: 'white' }}>
+            <h3 style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '1rem' }}>تنبيه: يوجد {delayedOrders.length} طلبات متأخرة!</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', opacity: 0.8 }}>
               يرجى مراجعة الطلبات بالأرقام: {delayedOrders.map(o => '#' + o.id).join(', ')}
             </p>
           </div>
@@ -319,37 +340,39 @@ const DashboardView = () => {
       )}
 
       <header>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>لوحة التحكم</h1>
-        <p style={{ color: 'var(--text-muted)' }}>مرحباً بك في نظام إدارة دليفري أبو خاطر</p>
+        <h1>لوحة التحكم</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>مرحباً بك في نظام إدارة دليفري أبو خاطر</p>
       </header>
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         {stats.map((stat, i) => (
-          <div key={i} className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ padding: '12px', borderRadius: '12px', background: `${stat.color}20`, color: stat.color }}>
-              <stat.icon size={28} />
+          <div key={i} className="card flex" style={{ alignItems: 'center', padding: '20px' }}>
+            <div style={{ padding: '12px', borderRadius: '12px', background: `${stat.color}15`, color: stat.color }}>
+              <stat.icon size={24} />
             </div>
             <div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{stat.label}</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{stat.value}</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{stat.label}</p>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>{stat.value}</h3>
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-        <div className="glass-card" style={{ padding: '24px', borderTop: '4px solid var(--primary)' }}>
-          <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem' }}>
-            <MapPin size={24} color="var(--primary)" /> رحلات الدليفري الحالية (تحقق المشرف)
+      <div className="card" style={{ borderTop: '4px solid var(--primary)', padding: '0' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
+          <h3 className="flex" style={{ fontSize: '1.2rem', margin: 0 }}>
+            <MapPin size={22} color="var(--primary)" /> رحلات الدليفري الحالية
           </h3>
+        </div>
 
-          <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
-            {/* Pilots List Side */}
-            <div style={{ width: '250px', borderLeft: '1px solid var(--border)', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <h4 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '10px' }}>الطيارين في الخارج:</h4>
+        <div className="flex flex-wrap" style={{ minHeight: '400px', gap: '0' }}>
+          {/* Pilots List Side */}
+          <div style={{ width: '100%', maxWidth: '280px', borderLeft: '1px solid var(--border)', padding: '20px' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px' }}>الطيارين في الخارج:</h4>
+            <div className="grid" style={{ gap: '8px' }}>
               {pilotsWithOrders.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>لا يوجد طيارين في الخارج حالياً</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>لا يوجد طيارين في الخارج حالياً</p>
               ) : (
                 pilotsWithOrders.map(p => (
                   <button
@@ -359,109 +382,89 @@ const DashboardView = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '12px 16px',
+                      padding: '12px',
                       borderRadius: '12px',
                       border: 'none',
-                      background: viewPilotId === p.id ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                      color: viewPilotId === p.id ? 'black' : 'white',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      background: viewPilotId === p.id ? 'var(--primary)' : 'rgba(255,255,255,0.03)',
+                      color: viewPilotId === p.id ? 'white' : 'var(--text-main)',
                       textAlign: 'right',
-                      fontWeight: 'bold'
+                      fontWeight: '700',
+                      minHeight: '44px'
                     }}
                   >
                     <span>{p.name}</span>
-                    <span style={{ fontSize: '0.8rem', background: viewPilotId === p.id ? 'rgba(0,0,0,0.2)' : 'var(--primary)', padding: '2px 8px', borderRadius: '4px', color: viewPilotId === p.id ? 'black' : 'black' }}>
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '6px' }}>
                       {ordersByPilot[p.id]?.length || 0}
                     </span>
                   </button>
                 ))
               )}
             </div>
+          </div>
 
-            {/* Orders Table Side */}
-            <div style={{ flex: 1 }}>
-              {viewPilotId && ordersByPilot[viewPilotId] ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ textAlign: 'right', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                      <th style={{ padding: '16px 8px', color: 'var(--text-muted)' }}>رقم البون #</th>
-                      <th style={{ padding: '16px 8px', color: 'var(--text-muted)' }}>تفاصيل العميل</th>
-                      <th style={{ padding: '16px 8px', color: 'var(--text-muted)' }}>المنطقة</th>
-                      <th style={{ padding: '16px 8px', color: 'var(--text-muted)' }}>التوقيت</th>
-                      <th style={{ padding: '16px 8px', color: 'var(--text-muted)', textAlign: 'center' }}>إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ordersByPilot[viewPilotId].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map(order => {
-                      const elapsed = getElapsedTime(order.timestamp);
-                      const isDelayed = elapsed > 40;
+          {/* Orders Table Side */}
+          <div style={{ flex: 1, minWidth: '300px', padding: '20px', overflowX: 'auto' }}>
+            {viewPilotId && ordersByPilot[viewPilotId] ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'right', color: 'var(--text-muted)', borderBottom: '2px solid var(--border)' }}>
+                    <th style={{ padding: '12px 8px' }}>بون #</th>
+                    <th style={{ padding: '12px 8px' }}>العميل</th>
+                    <th style={{ padding: '12px 8px' }}>المنطقة</th>
+                    <th style={{ padding: '12px 8px' }}>الوقت</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center' }}>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordersByPilot[viewPilotId].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map(order => {
+                    const elapsed = getElapsedTime(order.timestamp);
+                    const isDelayed = elapsed > 40;
 
-                      return (
-                        <tr key={order.id} style={{ borderBottom: '1px solid var(--border)', background: isDelayed ? 'rgba(220, 38, 38, 0.1)' : 'transparent', transition: 'background 0.2s' }}>
-                          <td style={{ padding: '16px 8px', fontWeight: '900', fontSize: '1.3rem', color: 'var(--primary)', fontFamily: 'monospace' }}>
-                            #{order.originalId || order.id}
-                            <button onClick={() => handleEditOrder(order)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: '8px', color: 'var(--text-muted)', opacity: 0.7 }} title="تعديل">
-                              <span style={{ fontSize: '1rem' }}>✏️</span>
-                            </button>
-                          </td>
-                          <td style={{ padding: '16px 8px' }}>
-                            <p style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{order.customerName}</p>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{order.total > 0 ? `${order.total} ج.م` : ''}</p>
-                          </td>
-                          <td style={{ padding: '16px 8px', fontSize: '1.1rem' }}>{order.area || 'غير محدد'}</td>
-                          <td style={{ padding: '16px 8px' }}>
-                            <span style={{
-                              color: isDelayed ? 'var(--danger)' : elapsed > 25 ? 'var(--warning)' : 'var(--accent)',
-                              fontWeight: 'bold',
-                              fontSize: '1.1rem',
-                              display: 'flex', alignItems: 'center', gap: '6px'
-                            }}>
-                              {elapsed} د {isDelayed && <span className="pulse-dot">⚠️</span>}
-                            </span>
-                          </td>
-                          <td style={{ padding: '16px 8px' }}>
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              <button
-                                onClick={() => completeOrder(order.id)}
-                                style={{ padding: '8px 16px', borderRadius: '6px', background: 'var(--success)', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}
-                              >
-                                تسليم ✅
-                              </button>
-                              <button
-                                onClick={() => handleFailDelivery(order.id)}
-                                style={{ padding: '8px 12px', borderRadius: '6px', background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}
-                                title="فشل التوصيل"
-                              >
-                                ❌
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-                  {pilotsWithOrders.length > 0 ? 'الرجاء اختيار طيار لعرض طلباته' : 'لا توجد رحلات نشطة حالياً'}
-                </div>
-              )}
-            </div>
+                    return (
+                      <tr key={order.id} style={{ borderBottom: '1px solid var(--border)', background: isDelayed ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
+                        <td style={{ padding: '16px 8px' }}>
+                          <span style={{ fontWeight: '800', color: 'var(--primary)' }}>#{order.originalId || order.id}</span>
+                          <button onClick={() => handleEditOrder(order)} style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', marginRight: '4px', opacity: 0.6 }}>✏️</button>
+                        </td>
+                        <td style={{ padding: '16px 8px' }}>
+                          <p style={{ fontWeight: 'bold' }}>{order.customerName}</p>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{order.total > 0 ? `${order.total} ج.م` : ''}</p>
+                        </td>
+                        <td style={{ padding: '16px 8px' }}>{order.area}</td>
+                        <td style={{ padding: '16px 8px' }}>
+                          <span style={{ color: isDelayed ? 'var(--danger)' : elapsed > 25 ? 'var(--warning)' : 'var(--accent)', fontWeight: 'bold' }}>
+                            {elapsed} د
+                          </span>
+                        </td>
+                        <td style={{ padding: '16px 8px' }}>
+                          <div className="flex" style={{ justifyContent: 'center', gap: '8px' }}>
+                            <button onClick={() => completeOrder(order.id)} style={{ padding: '6px 12px', background: 'var(--success)', border: 'none', color: 'white', fontSize: '0.85rem' }}>تسليم</button>
+                            <button onClick={() => handleFailDelivery(order.id)} style={{ padding: '6px 8px', background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}>❌</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-muted)' }}>
+                {pilotsWithOrders.length > 0 ? 'الرجاء اختيار طيار لعرض طلباته' : 'لا توجد رحلات نشطة حالياً'}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <section style={{ opacity: 0.9 }}>
-        <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Bike size={20} color="var(--accent)" /> نشاط الطيارين (الوردية الحالية)
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-
+      <section style={{ marginTop: '20px' }}>
+        <h2 className="flex" style={{ fontSize: '1.2rem' }}>
+          <Bike size={22} color="var(--accent)" /> نشاط الطيارين (الوردية الحالية)
+        </h2>
+        <div className="grid grid-2">
           {/* Active Pilots Card */}
-          <div className="glass-card" style={{ padding: '20px', borderRight: '4px solid var(--accent)' }}>
-            <h4 style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>طيارين متاحين ({activePilots.length})</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="card" style={{ borderRight: '4px solid var(--accent)' }}>
+            <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>طيارين متاحين ({activePilots.length})</h4>
+            <div className="grid" style={{ gap: '10px' }}>
               {activePilots.length > 0 ? activePilots.map(p => {
                 const currentLoad = orders.filter(o =>
                   o.pilotId === p.id &&
@@ -470,15 +473,17 @@ const DashboardView = () => {
                 const isOut = p.state === 'out';
 
                 return (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isOut ? 'var(--warning)' : 'var(--success)' }}></div>
+                  <div key={p.id} className="flex" style={{ justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                    <div className="flex" style={{ gap: '12px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: isOut ? 'var(--warning)' : 'var(--success)', marginTop: '6px' }}></div>
                       <div>
-                        <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.name}</p>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isOut ? 'خارج للتوصيل 🏍️' : 'متاح في المطعم ✅'}</p>
+                        <p style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{p.name}</p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {isOut ? 'خارج للتوصيل 🏍️' : 'متاح في المطعم ✅'} | {p.shift || '8:00A - 6:00P'}
+                        </p>
                       </div>
                     </div>
-                    <span style={{ fontSize: '0.8rem', background: currentLoad >= 7 ? 'var(--danger)' : 'var(--primary)', padding: '2px 8px', borderRadius: '4px', color: 'black' }}>
+                    <span style={{ fontSize: '0.8rem', background: currentLoad >= 7 ? 'var(--danger)' : 'var(--primary)', padding: '2px 10px', borderRadius: '6px', color: '#000', height: 'fit-content' }}>
                       {currentLoad} طلبات
                     </span>
                   </div>
@@ -488,17 +493,18 @@ const DashboardView = () => {
           </div>
 
           {/* Closed Pilots Card */}
-          <div className="glass-card" style={{ padding: '20px', borderRight: '4px solid var(--danger)' }}>
-            <h4 style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>شيفت مغلق ({closedPilots.length})</h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="card" style={{ borderRight: '4px solid var(--danger)' }}>
+            <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>شيفت مغلق ({closedPilots.length})</h4>
+            <div className="flex flex-wrap" style={{ gap: '10px' }}>
               {closedPilots.map(p => (
-                <span key={p.id} style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  {p.name}
+                <span key={p.id} style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--border)', display: 'inline-flex', gap: '4px' }}>
+                  <strong>{p.name}</strong>
+                  <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>({p.shift || '8:00A - 6:00P'})</span>
                 </span>
               ))}
+              {closedPilots.length === 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>لا يوجد طيارين مسجلين</p>}
             </div>
           </div>
-
         </div>
       </section>
     </div>
@@ -507,7 +513,7 @@ const DashboardView = () => {
 
 const SIMPLE_MENU = {
   'سندوتشات': ['أسبايسي', 'بدون تومية', 'بدون شطة', 'بدون سلطة', 'بدون طحينة', 'بدون أضافات'],
-  'مشويات': ['سوي زيادة', ''],
+  'مشويات': ['سوي زيادة'],
   'مقبلات': ['بطاطس محمرة', 'كول سلو', 'ثومية', 'طحينة', 'مخلل'],
   'مشروبات': ['بيبسي', 'سفن اب', 'مياه معدنية', 'عصير']
 };
@@ -515,409 +521,297 @@ const SIMPLE_MENU = {
 const ManualOrderForm = ({ onClose, initialData }) => {
   const { addOrder, sendToN8N } = useApp();
   const [formData, setFormData] = useState(initialData?.formData || {
-    receiptNo: '',
-    customerName: '',
-    phone: '',
-    area: MATAREYA_AREAS[0],
-    customArea: '',
-    total: '',
-    deliveryFee: 20,
-    itemsDescription: '', // Legacy fallback
-    paymentMethod: 'Cash',
-    paymentProof: null
+    receiptNo: '', customerName: '', phone: '', area: '',
+    lat: null, lng: null, zone: null, distance: 0,
+    customArea: '', total: 0, deliveryFee: 20, itemsDescription: '',
+    paymentMethod: 'Cash', paymentProof: null
   });
   const [selectedItems, setSelectedItems] = useState(initialData?.selectedItems || {});
   const [activeCategory, setActiveCategory] = useState('سندوتشات');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [areaSearch, setAreaSearch] = useState('');
+  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
 
-  const deliveryFees = Array.from({ length: (100 - 20) / 5 + 1 }, (_, i) => 20 + i * 5);
+  const isOutsideRadius = formData.distance > 15;
 
-  const handleAddItem = (item) => {
-    setSelectedItems(prev => ({
-      ...prev,
-      [item]: (prev[item] || 0) + 1
-    }));
-  };
+  const deliveryFees = Array.from({ length: 17 }, (_, i) => 20 + i * 5);
 
+  const handleAddItem = (item) => setSelectedItems(prev => ({ ...prev, [item]: (prev[item] || 0) + 1 }));
   const handleRemoveItem = (item) => {
     setSelectedItems(prev => {
       const active = { ...prev };
-      if (active[item] > 1) {
-        active[item] -= 1;
-      } else {
-        delete active[item];
-      }
+      if (active[item] > 1) active[item] -= 1; else delete active[item];
       return active;
     });
   };
 
   const printKitchenTicket = () => {
-    if (!formData.receiptNo) {
-      alert('الرجاء إدخال رقم البون أولاً للطباعة');
-      return;
-    }
-
+    if (!formData.receiptNo) return alert('أدخل رقم البون للطباعة');
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) return;
 
-    const itemsHtml = Object.entries(selectedItems)
-      .map(([name, count]) => `<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold;"><span>${name}</span><span>x${count}</span></div>`)
-      .join('');
-
-    // Connect to Ethernet Printer via n8n Bridge
     sendToN8N({
-      id: formData.receiptNo,
-      customer: formData.customerName,
-      items: selectedItems,
-      notes: formData.itemsDescription,
+      id: formData.receiptNo, customer: formData.customerName,
+      items: selectedItems, notes: formData.itemsDescription,
       type: 'KITCHEN_TICKET_PRINT'
     }, 'PRINT_JOB');
 
     const htmlContent = `
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <title>Kitchen Ticket #${formData.receiptNo}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0; }
-          body { 
-            font-family: 'Courier New', monospace; 
-            padding: 5mm; 
-            width: 70mm; 
-            margin: 0 auto; 
-            text-align: center;
-            background: white; 
-            color: black;
-          }
-          .header { font-size: 32px; font-weight: 800; border-bottom: 3px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
-          .meta { font-size: 16px; margin-bottom: 15px; text-align: right; border-bottom: 1px dashed #000; padding-bottom: 5px; }
-          .items { margin-bottom: 15px; text-align: right; }
-          .footer { font-size: 14px; font-weight: bold; margin-top: 20px; border-top: 2px dashed #000; padding-top: 10px; }
-          .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 18px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">#${formData.receiptNo}</div>
-        <div class="meta">
-          <div>العميل: ${formData.customerName || 'عام'}</div>
-          <div>التوقيت: ${new Date().toLocaleTimeString('ar-EG')}</div>
-        </div>
-        <div class="items">
-          ${Object.entries(selectedItems)
-        .map(([name, count]) => `<div class="item-row"><span>${name}</span><span>x${count}</span></div>`)
-        .join('')}
-          ${formData.itemsDescription ? `<p style="margin-top:10px; font-size:14px; text-align:right;">ملاحظات: ${formData.itemsDescription}</p>` : ''}
-        </div>
-        <div class="footer">أبو خاطر - بون المطبخ</div>
-        <script>
-          window.onload = () => { window.print(); setTimeout(() => window.close(), 500); };
-        </script>
-      </body>
-      </html>
+      <html dir="rtl"><head><style>@page { size: 80mm auto; margin: 0; } body { font-family: monospace; padding: 5mm; text-align: center; } .header { font-size: 24px; font-weight: bold; border-bottom: 2px solid #000; margin-bottom: 10px; }</style></head>
+      <body><div class="header">بون مطبخ #${formData.receiptNo}</div>
+      <div style="text-align:right;">${Object.entries(selectedItems).map(([n, c]) => `<div>${n} x${c}</div>`).join('')}</div>
+      <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500);};</script></body></html>
     `;
-
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.receiptNo) {
-      alert('يجب إدخال رقم البون من المطبخ');
-      return;
-    }
-
+    if (!formData.receiptNo) return alert('رقم البون مطلوب');
     const itemsList = Object.entries(selectedItems).map(([name, count]) => ({ name, count }));
-    const autoDescription = itemsList.map(i => `${i.count}x ${i.name}`).join(', ');
-
     addOrder({
-      id: formData.receiptNo,
-      type: 'restaurant',
-      customerName: formData.customerName,
-      phone: formData.phone,
-      area: formData.area === 'اخرى (إدخال يدوي)' ? formData.customArea : formData.area,
-      total: Number(formData.total) || 0,
+      id: formData.receiptNo, type: 'restaurant', customerName: formData.customerName || "عميل مطعم",
+      phone: formData.phone, area: formData.area || "المطرية",
+      lat: formData.lat, lng: formData.lng,
+      total: 0, // Removed per request
       deliveryFee: Number(formData.deliveryFee),
-      itemsDescription: autoDescription + (formData.itemsDescription ? ` (${formData.itemsDescription})` : ''),
-      items: itemsList,
-      itemsCount: itemsList.reduce((acc, curr) => acc + curr.count, 0),
-      paymentMethod: formData.paymentMethod,
-      paymentProof: formData.paymentProof
+      source: 'manual', // 📞 طلب داخلي (كول سنتر)
+      itemsDescription: itemsList.map(i => `${i.count}x ${i.name}`).join(', ') + (formData.itemsDescription ? ` (${formData.itemsDescription})` : ''),
+      items: itemsList, itemsCount: itemsList.reduce((acc, curr) => acc + curr.count, 0),
+      paymentMethod: formData.paymentMethod, paymentProof: formData.paymentProof
     });
     onClose();
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(5px)', overflowY: 'auto', padding: '20px' }}>
-      <div className="glass-card" style={{ position: 'relative', padding: '24px', width: isMenuOpen ? '900px' : '500px', maxWidth: '100%', display: 'grid', gridTemplateColumns: isMenuOpen ? '1.2fr 2fr' : '1fr', gap: '24px', border: '1px solid var(--primary)', transition: 'all 0.3s ease' }}>
-
-        {/* Floating Toggle Button - Center Left Edge */}
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          style={{
-            position: 'absolute',
-            left: '-20px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: isMenuOpen ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
-            border: 'none',
-            color: 'white',
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10,
-            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            transition: 'all 0.3s ease'
-          }}
-          title={isMenuOpen ? "إخفاء القائمة" : "إظهار قائمة المطبخ"}
-        >
-          {isMenuOpen ? <ChevronRight size={24} /> : <ChevronLeft size={24} />}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)', overflowY: 'auto', padding: '16px' }}>
+      <div className="card" style={{ position: 'relative', width: isMenuOpen ? '1000px' : '500px', maxWidth: '100%', display: 'grid', gridTemplateColumns: isMenuOpen ? '1fr 1.8fr' : '1fr', gap: '24px', padding: '0', overflow: 'hidden' }}>
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ position: 'absolute', left: '12px', top: '12px', background: 'var(--primary)', color: 'white', width: '36px', height: '36px', borderRadius: '10px', zIndex: 20 }}>
+          {isMenuOpen ? <ChevronRight size={20} /> : <Menu size={20} />}
         </button>
 
-        {/* Left Column: Form Details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', display: 'flex', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Monitor size={24} /> بيانات الأوردر (Call Center)
-            </h3>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--primary)', fontWeight: 'bold' }}>رقم بون الكول سنتر (POS Ticket)</label>
-            <input
-              type="text"
-              className="glass-card"
-              style={{ background: 'black', color: 'var(--primary)', padding: '12px', border: '1px solid var(--primary)', borderRadius: '8px', width: '100%', fontSize: '1.4rem', fontWeight: 'bold', textAlign: 'center' }}
-              placeholder="1054"
-              required
-              autoFocus
-              value={formData.receiptNo}
-              onChange={e => setFormData({ ...formData, receiptNo: e.target.value })}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 className="flex" style={{ fontSize: '1.2rem' }}><Monitor size={22} color="var(--primary)" /> تفاصيل الأوردر</h2>
+          <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', textAlign: 'center' }}>
+            <label style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>رقم بون الكول سنتر</label>
+            <input 
+              type="text" 
+              style={{ background: 'transparent', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.6rem', fontWeight: '900', textAlign: 'center' }} 
+              value={formData.receiptNo} 
+              onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} 
+              required 
+              autoFocus 
+              placeholder="000"
             />
           </div>
-          {/* 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-              placeholder="اسم العميل"
-              required
-              value={formData.customerName}
-              onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-            />
-            <input
-              type="tel"
-              className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-              placeholder="رقم الهاتف"
-              required
-              value={formData.phone}
-              onChange={e => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div> */}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>منطقة التوصيل</label>
-            <select
-              className="glass-card"
-              style={{ background: '#1e293b', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '15px' }}
-              value={formData.area}
-              onChange={e => setFormData({ ...formData, area: e.target.value })}
-            >
-              {MATAREYA_AREAS.map(area => <option key={area} value={area}>{area}</option>)}
-            </select>
+          {/* 🧠 Smart Area Search (Autocomplete) */}
+          <div style={{ position: 'relative' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>📍 ابحث عن المنطقة</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text"
+                placeholder="اكتب اسم المنطقة (مثلاً: المطرية)..."
+                value={areaSearch}
+                onChange={e => {
+                  setAreaSearch(e.target.value);
+                  setShowAreaSuggestions(true);
+                }}
+                onFocus={() => setShowAreaSuggestions(true)}
+                style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', width: '100%', border: '1px solid var(--border)' }}
+              />
+              <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', opacity: 0.5 }} />
+            </div>
+
+            {showAreaSuggestions && areaSearch && (
+              <div className="glass-card" style={{ 
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, 
+                maxHeight: '280px', overflowY: 'auto', marginTop: '8px', 
+                border: '1px solid var(--border)', background: '#111827',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+              }}>
+                {[1, 2, 3, 4].map(zoneNum => {
+                  const zoneAreas = AREAS_METADATA.filter(a => a.zone === zoneNum && a.name.includes(areaSearch));
+                  if (zoneAreas.length === 0) return null;
+                  return (
+                    <div key={zoneNum}>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 16px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                        النطاق {zoneNum} (Zone {zoneNum})
+                      </div>
+                      {zoneAreas.map(area => {
+                        const dist = calculateDistance(RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng, area.lat, area.lng);
+                        return (
+                          <div 
+                            key={area.name} 
+                            onClick={() => {
+                              setFormData({ 
+                                ...formData, 
+                                area: area.name, 
+                                lat: area.lat, 
+                                lng: area.lng, 
+                                zone: area.zone, 
+                                distance: dist,
+                                deliveryFee: area.fee 
+                              });
+                              setAreaSearch(area.name);
+                              setShowAreaSuggestions(false);
+                            }}
+                            className="hover-scale"
+                            style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}
+                          >
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>{area.name}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '8px' }}>({dist} كم)</span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>{area.fee} ج.م</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {formData.area === 'اخرى (إدخال يدوي)' && (
-            <input
-              className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-              placeholder="ادخل المنطقة يدوياً"
-              required
-              value={formData.customArea}
-              onChange={e => setFormData({ ...formData, customArea: e.target.value })}
-            />
+          {/* Location Feedback Badges */}
+          {formData.area && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                 <Ruler size={14} /> {formData.distance} كم من المطعم
+               </div>
+               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.75rem' }}>
+                 نطاق التوصيل: {formData.zone}
+               </div>
+               {isOutsideRadius && (
+                  <div style={{ width: '100%', padding: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '8px', marginTop: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={18} /> خارج نطاق التوصيل (أكثر من 15كم)
+                  </div>
+               )}
+            </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>إجمالي الفاتورة (اختياري)</label>
-              <input
-                // type="number"
-                className="glass-card"
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-                placeholder="0"
-                value={formData.total}
-                onChange={e => setFormData({ ...formData, total: e.target.value })}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>خدمة التوصيل</label>
-              <select
-                className="glass-card"
-                style={{ background: '#1e293b', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-                value={formData.deliveryFee}
-                onChange={e => setFormData({ ...formData, deliveryFee: e.target.value })}
-              >
-                {deliveryFees.map(fee => <option key={fee} value={fee}>{fee} ج.م</option>)}
-              </select>
+          <div className="grid" style={{ gap: '12px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '-4px' }}>💰 خدمة التوصيل (مثبتة حسب النطاق)</label>
+            <input 
+                readOnly 
+                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'not-allowed' }}
+                value={`${formData.deliveryFee} ج.م`}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>💳 طريقة الدفع</label>
+            <div className="flex" style={{ gap: '8px' }}>
+              {[
+                { id: 'Cash', label: 'كاش', color: '#10b981' },
+                { id: 'vodafone_cash', label: 'فودافون كاش', color: '#ef4444' },
+                { id: 'instapay', label: 'انستا باى', color: '#8b5cf6' }
+              ].map(method => (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, paymentMethod: method.id })}
+                  style={{
+                    flex: 1,
+                    padding: '12px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    border: '2px solid',
+                    borderColor: formData.paymentMethod === method.id ? method.color : 'rgba(255,255,255,0.05)',
+                    background: formData.paymentMethod === method.id ? `${method.color}15` : 'rgba(255,255,255,0.05)',
+                    color: formData.paymentMethod === method.id ? method.color : 'var(--text-muted)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {method.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>طريقة الدفع</label>
-            <select
-              className="glass-card"
-              style={{ background: '#1e293b', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '15px' }}
-              value={formData.paymentMethod}
-              onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
-            >
-              <option value="Cash">نقدي</option>
-              <option value="Wallet">محفظة إلكترونية (Etisalat Cash)</option>
-              <option value="Visa">انستاباي (instapay)</option>
-            </select>
-          </div>
-
-          {(formData.paymentMethod === 'Wallet' || formData.paymentMethod === 'Visa') && (
-            <div style={{ background: 'rgba(255,165,0,0.1)', padding: '12px', borderRadius: '8px', border: '1px dashed var(--warning)' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--warning)', marginBottom: '8px' }}>📸 صورة التحويل / الإيصال (إجباري)</label>
-              <input
-                type="file"
-                accept="image/*"
+          {(formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && (
+            <div style={{ 
+              background: 'rgba(255,255,255,0.03)', 
+              padding: '16px', 
+              borderRadius: '12px', 
+              border: '1px dashed var(--border)',
+              textAlign: 'center'
+            }}>
+              <p style={{ fontSize: '0.85rem', marginBottom: '10px', color: 'var(--accent)', fontWeight: 'bold' }}>
+                📸 صورة إيصال التحويل (إجباري)
+              </p>
+              <input 
+                required 
+                type="file" 
+                accept="image/*" 
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData({ ...formData, paymentProof: reader.result });
-                    };
+                    reader.onloadend = () => setFormData({ ...formData, paymentProof: reader.result });
                     reader.readAsDataURL(file);
                   }
-                }}
-                style={{ fontSize: '0.8rem', color: 'white' }}
+                }} 
+                style={{ fontSize: '0.8rem', color: 'white', cursor: 'pointer' }} 
               />
-              {formData.paymentProof && <p style={{ color: 'var(--success)', fontSize: '0.8rem', marginTop: '4px' }}>✅ تم رفع الصورة</p>}
+              {formData.paymentProof && (
+                 <img 
+                    src={formData.paymentProof} 
+                    alt="Success" 
+                    style={{ marginTop: '12px', width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--accent)' }} 
+                 />
+              )}
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
-            <button type="submit" onClick={handleSubmit} className="btn-primary" style={{ flex: 2, justifyContent: 'center', height: '48px' }}>حفظ الطلب</button>
-            <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '8px' }}>إلغاء</button>
+          <div className="flex" style={{ gap: '12px', marginTop: '20px' }}>
+            <button 
+                onClick={handleSubmit} 
+                disabled={
+                    isOutsideRadius || 
+                    !formData.receiptNo || 
+                    !formData.area ||
+                    ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)
+                }
+                className="btn-primary" 
+                style={{ 
+                    flex: 2, justifyContent: 'center', height: '50px', fontSize: '1.1rem',
+                    opacity: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
+                    cursor: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
+                }}
+            >
+              حفظ الأوردر
+            </button>
+            <button onClick={onClose} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'white' }}>إلغاء</button>
           </div>
         </div>
 
-
-
-        {/* Right Column: Menu Selection */}
         {isMenuOpen && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderRight: '1px solid var(--border)', paddingRight: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <h3 style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>تحديد الأصناف (للمطبخ)</h3>
-              <button
-                type="button"
-                onClick={printKitchenTicket}
-                className="btn-primary"
-                style={{ background: 'white', color: 'black', fontSize: '0.8rem', padding: '6px 12px' }}
-              >
-                <Receipt size={16} /> طباعة بون المطبخ
-              </button>
-            </div>
-
-            {/* Categories Tabs */}
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <header className="flex" style={{ justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '1rem' }}>الأصناف للمطبخ</h3>
+              <button onClick={printKitchenTicket} style={{ background: 'white', color: 'black', padding: '4px 12px', borderRadius: '8px' }}><Receipt size={16} /> طباعة</button>
+            </header>
+            <div className="flex" style={{ overflowX: 'auto', gap: '8px' }}>
               {Object.keys(SIMPLE_MENU).map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    background: activeCategory === cat ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                    color: activeCategory === cat ? 'white' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {cat}
-                </button>
+                <button key={cat} onClick={() => setActiveCategory(cat)} style={{ padding: '6px 12px', borderRadius: '20px', background: activeCategory === cat ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: 'white' }}>{cat}</button>
               ))}
             </div>
-
-            {/* Items Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px', maxHeight: '250px', overflowY: 'auto' }}>
               {SIMPLE_MENU[activeCategory].map(item => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => handleAddItem(item)}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
-                    background: selectedItems[item] ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.02)',
-                    color: selectedItems[item] ? 'var(--primary)' : 'var(--text-main)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.9rem' }}>{item}</span>
-                  {selectedItems[item] && (
-                    <span style={{ fontSize: '0.8rem', background: 'var(--primary)', color: 'white', padding: '2px 8px', borderRadius: '10px' }}>
-                      x{selectedItems[item]}
-                    </span>
-                  )}
+                <button key={item} onClick={() => handleAddItem(item)} style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', background: selectedItems[item] ? 'rgba(79, 70, 229, 0.2)' : 'transparent', color: 'white' }}>
+                  {item} {selectedItems[item] && `x${selectedItems[item]}`}
                 </button>
               ))}
             </div>
-
-            {/* Selected Summary */}
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <h4 style={{ fontSize: '1rem', marginBottom: '12px', color: 'var(--text-muted)' }}>ملخص الطلب</h4>
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {Object.keys(selectedItems).length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '20px' }}>لم يتم اختيار أصناف</p>
-                ) : (
-                  Object.entries(selectedItems).map(([item, count]) => (
-                    <div key={item} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                      <span>{item}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontWeight: 'bold' }}>x{count}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item)}
-                          style={{ background: 'var(--danger)', border: 'none', color: 'white', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          -
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <textarea
-                className="glass-card"
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', marginTop: '12px', minHeight: '60px', resize: 'none' }}
-                placeholder="ملاحظات إضافية للمطبخ..."
-                value={formData.itemsDescription}
-                onChange={e => setFormData({ ...formData, itemsDescription: e.target.value })}
-              />
-            </div>
-
+            <textarea style={{ background: 'rgba(0,0,0,0.2)', color: 'white', padding: '12px', borderRadius: '10px', resize: 'none', minHeight: '60px' }} placeholder="ملاحظات المطبخ..." value={formData.itemsDescription} onChange={e => setFormData({ ...formData, itemsDescription: e.target.value })} />
           </div>
         )}
-
       </div>
-    </div >
+    </div>
   );
 };
 
@@ -948,6 +842,7 @@ const ExternalOrderForm = ({ onClose, initialData }) => {
       area: formData.area,
       total: 0, // Usually prepaid or separate
       deliveryFee: Number(formData.deliveryFee),
+      source: 'talabat', // 📱 طلب خارجي عبر تابلت (طلبات)
       itemsDescription: `طلب ${formData.platform}`,
       itemsCount: 1,
       paymentMethod: formData.paymentMethod,
@@ -957,20 +852,18 @@ const ExternalOrderForm = ({ onClose, initialData }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '  rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(12px)' }}>
-      <div className="glass-card" style={{ padding: '32px', width: '480px', display: 'flex', flexDirection: 'column', gap: '20px', border: '1px solid var(--accent)' }}>
-        <h3 style={{ fontSize: '1.4rem', borderBottom: '1px solid var(--border)', paddingBottom: '12px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Globe size={24} /> أوردر خارجي (Talabat)
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)', padding: '16px' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '480px', border: '1px solid var(--accent)', padding: '32px' }}>
+        <h3 className="flex" style={{ fontSize: '1.4rem', color: 'var(--accent)', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px' }}>
+          <Globe size={24} /> أوردر تطبيقات (Talabat)
         </h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--accent)', fontWeight: 'bold' }}>رقم  هاشتاج الاوردر (Talabat)</label>
+        <form onSubmit={handleSubmit} className="grid" style={{ gap: '20px' }}>
+          <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', margin: 0 }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--accent)', fontWeight: 'bold', fontSize: '0.9rem' }}>رقم الاوردر على التابلت</label>
             <input
               type="text"
-              className="glass-card"
-              style={{ background: 'black', color: 'var(--accent)', padding: '12px', border: '1px solid var(--accent)', borderRadius: '8px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'center' }}
-              placeholder="POS Receipt #"
+              style={{ background: 'transparent', color: 'var(--accent)', border: '2px solid var(--accent)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.4rem', fontWeight: '900', textAlign: 'center' }}
+              placeholder="#0000000"
               required
               autoFocus
               value={formData.receiptNo}
@@ -978,32 +871,35 @@ const ExternalOrderForm = ({ onClose, initialData }) => {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <select
-              className="glass-card"
-              style={{ background: '#1e293b', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-              value={formData.platform}
-              onChange={e => setFormData({ ...formData, platform: e.target.value })}
-            >
-              <option value="Talabat">Talabat</option>
-              <option value="Noon">Noon Food</option>
-              <option value="ElMenus">ElMenus</option>
-              <option value="Other">أخرى</option>
-            </select>
-            <input
-              type="number"
-              className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}
-              placeholder="خدمة التوصيل"
-              required
-              value={formData.deliveryFee}
-              onChange={e => setFormData({ ...formData, deliveryFee: e.target.value })}
-            />
+          <div className="grid-2" style={{ gap: '12px' }}>
+            <div className="grid" style={{ gap: '8px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>التطبيق</label>
+              <select
+                style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', border: '1px solid var(--border)', borderRadius: '12px', width: '100%' }}
+                value={formData.platform}
+                onChange={e => setFormData({ ...formData, platform: e.target.value })}
+              >
+                <option value="Talabat">Talabat</option>
+                <option value="Noon">Noon Food</option>
+                <option value="ElMenus">ElMenus</option>
+                <option value="Other">أخرى</option>
+              </select>
+            </div>
+            <div className="grid" style={{ gap: '8px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>خدمة التوصيل</label>
+              <input
+                type="number"
+                style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', border: '1px solid var(--border)', borderRadius: '12px', width: '100%' }}
+                required
+                value={formData.deliveryFee}
+                onChange={e => setFormData({ ...formData, deliveryFee: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-            <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center', height: '48px', background: 'var(--accent)' }}>إضافة</button>
-            <button type="button" onClick={onClose} style={{ flex: 0.5, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '8px' }}>إلغاء</button>
+          <div className="flex" style={{ marginTop: '12px' }}>
+            <button type="submit" className="btn-primary" style={{ flex: 2, background: 'var(--accent)', color: 'black', justifyContent: 'center' }}>إضافة</button>
+            <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>إلغاء</button>
           </div>
         </form>
       </div>
@@ -1015,108 +911,50 @@ const ReservationModal = ({ onClose }) => {
   const { addReservation } = useApp();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    type: 'restaurant',
-    customerName: '',
-    phone: '',
-    date: new Date().toISOString().split('T')[0],
-    time: '14:00',
-    guests: 2,
-    deposit: 50,
-    notes: ''
+    type: 'restaurant', customerName: '', phone: '',
+    date: new Date().toISOString().split('T')[0], time: '14:00',
+    guests: 2, deposit: 50, notes: ''
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (step < 2) {
-      setStep(2);
-      return;
-    }
+    if (step < 2) return setStep(2);
     addReservation(formData);
     onClose();
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(10px)' }}>
-      <div className="glass-card" style={{ padding: '32px', width: '480px', border: '1px solid #8b5cf6', boxShadow: '0 0 40px rgba(139, 92, 246, 0.2)' }}>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h3 style={{ color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
-            <UtensilsCrossed size={28} /> طلب حجز جديد
-          </h3>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: step === 1 ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}></div>
-            <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: step === 2 ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}></div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(10px)', padding: '16px' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '480px', border: '1px solid #8b5cf6', padding: '32px' }}>
+        <h3 className="flex" style={{ color: '#8b5cf6', marginBottom: '24px' }}><UtensilsCrossed size={24} /> حجز جديد</h3>
+        <form onSubmit={handleSubmit} className="grid" style={{ gap: '20px' }}>
           {step === 1 ? (
             <>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="grid-2" style={{ gap: '12px' }}>
                 {['restaurant', 'cafe'].map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, type: t })}
-                    style={{
-                      flex: 1, padding: '20px', borderRadius: '16px', border: '2px solid',
-                      borderColor: formData.type === t ? '#8b5cf6' : 'rgba(255,255,255,0.05)',
-                      background: formData.type === t ? 'rgba(139, 92, 246, 0.1)' : 'rgba(255,255,255,0.02)',
-                      color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', transition: '0.2s'
-                    }}
-                  >
-                    <span style={{ fontSize: '2rem' }}>{t === 'restaurant' ? '🍽️' : '☕'}</span>
-                    <span style={{ fontWeight: 'bold' }}>{t === 'restaurant' ? 'حجز مطعم' : 'حجز كافيه'}</span>
+                  <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t })} className="card" style={{ padding: '16px', textAlign: 'center', border: formData.type === t ? '2px solid #8b5cf6' : '1px solid var(--border)', background: formData.type === t ? 'rgba(139, 92, 246, 0.1)' : 'transparent', color: 'white' }}>
+                    {t === 'restaurant' ? 'مطعم' : 'كافيه'}
                   </button>
                 ))}
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input required className="glass-card" style={{ width: '100%', padding: '14px', color: 'white', fontSize: '1.1rem' }} placeholder="الاسم الكامل للعميل" value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} />
-                <input required type="tel" className="glass-card" style={{ width: '100%', padding: '14px', color: 'white', fontSize: '1.1rem' }} placeholder="رقم الموبايل" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>التاريخ</label>
-                  <input required type="date" className="glass-card" style={{ width: '100%', padding: '12px', color: 'white' }} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>الوقت</label>
-                  <input required type="time" className="glass-card" style={{ width: '100%', padding: '12px', color: 'white' }} value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} />
-                </div>
-              </div>
+              <input required style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="اسم العميل" value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} />
+              <input required style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="رقم الهاتف" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </>
           ) : (
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-              <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>مراجعة تفاصيل الحجز</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>النوع:</span><strong>{formData.type === 'cafe' ? 'كافيه ☕' : 'مطعم 🍽️'}</strong></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>العميل:</span><strong>{formData.customerName}</strong></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>التاريخ:</span><strong>{formData.date} في {formData.time}</strong></div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-                  <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>عدد الأفراد</span>
-                    <input type="number" style={{ background: 'transparent', border: 'none', color: 'white', width: '100%', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }} value={formData.guests} onChange={e => setFormData({ ...formData, guests: e.target.value })} />
-                  </div>
-                  <div className="glass-card" style={{ padding: '12px', textAlign: 'center', border: '1px solid #8b5cf6' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#8b5cf6' }}>العربون (ج.م)</span>
-                    <input type="number" style={{ background: 'transparent', border: 'none', color: '#8b5cf6', width: '100%', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }} value={formData.deposit} onChange={e => setFormData({ ...formData, deposit: e.target.value })} />
-                  </div>
-                </div>
-
-                <textarea className="glass-card" style={{ width: '100%', padding: '12px', color: 'white', marginTop: '12px', minHeight: '80px' }} placeholder="ملاحظات إضافية..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+            <>
+              <div className="grid-2" style={{ gap: '12px' }}>
+                <input type="date" style={{ background: 'var(--bg-dark)', color: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                <input type="time" style={{ background: 'var(--bg-dark)', color: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }} value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} />
               </div>
-            </div>
+              <div className="grid-2" style={{ gap: '12px' }}>
+                <input type="number" style={{ background: 'var(--bg-dark)', color: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="عدد الأفراد" value={formData.guests} onChange={e => setFormData({ ...formData, guests: e.target.value })} />
+                <input type="number" style={{ background: 'var(--bg-dark)', color: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="العربون" value={formData.deposit} onChange={e => setFormData({ ...formData, deposit: e.target.value })} />
+              </div>
+            </>
           )}
-
-          <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-            {step === 2 && <button type="button" onClick={() => setStep(1)} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', borderRadius: '12px', cursor: 'pointer' }}>سابق</button>}
-            <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center', background: '#8b5cf6', height: '54px', fontSize: '1.1rem' }}>
-              {step === 1 ? 'متابعة الحجز' : 'تأكيد وإرسال للمدير'}
-            </button>
-            <button type="button" onClick={onClose} style={{ flex: step === 1 ? 1 : 0, overflow: 'hidden', padding: step === 1 ? '12px' : '0', width: step === 1 ? 'auto' : '0', background: 'transparent', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', borderRadius: '12px', transition: '0.2s' }}>إلغاء</button>
+          <div className="flex" style={{ gap: '12px' }}>
+            <button type="submit" className="btn-primary" style={{ flex: 2, background: '#8b5cf6', justifyContent: 'center' }}>{step === 1 ? 'التالي' : 'تأكيد'}</button>
+            <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', color: 'white', border: '1px solid var(--border)' }}>إلغاء</button>
           </div>
         </form>
       </div>
@@ -1176,113 +1014,34 @@ const ReservationView = () => {
   const [confirmingRes, setConfirmingRes] = useState(null);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="grid" style={{ gap: '32px' }}>
       {showModal && <ReservationModal onClose={() => setShowModal(false)} />}
       {confirmingRes && <ConfirmPaymentModal res={confirmingRes} onClose={() => setConfirmingRes(null)} />}
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: '900', color: '#8b5cf6', letterSpacing: '-1px' }}>منظم حجوزات أبو خاطر</h1>
-          <p style={{ color: 'var(--text-muted)' }}>إدارة طاولات المطعم والكافيه الخارجي</p>
-        </div>
+      <header className="flex" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div><h1 style={{ color: '#a78bfa' }}>الحجوزات</h1><p style={{ color: 'var(--text-muted)' }}>إدارة طاولات المطعم</p></div>
+        <button onClick={() => setShowModal(true)} className="btn-primary" style={{ background: '#8b5cf6' }}><PlusCircle size={20} /> حجز جديد</button>
       </header>
 
-      {/* Floating Add Button - Bottom Center */}
-      <button
-        onClick={() => setShowModal(true)}
-        className="btn-primary"
-        style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '10%',
-          transform: 'translateX(-50%)',
-          background: '#8b5cf6',
-          padding: '16px 32px',
-          borderRadius: '20px',
-          boxShadow: '0 15px 35px rgba(139, 92, 246, 0.4)',
-          zIndex: 100,
-          border: '2px solid rgba(255,255,255,0.1)',
-          fontSize: '1.1rem'
-        }}
-      >
-        <PlusCircle size={24} /> حجز طـاولة جديـد
-      </button>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '24px' }}>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
         {reservations.length === 0 ? (
-          <div className="glass-card" style={{ gridColumn: '1/-1', padding: '80px', textAlign: 'center', opacity: 0.8 }}>
-            <UtensilsCrossed size={48} color="#8b5cf6" style={{ marginBottom: '16px', opacity: 0.5 }} />
-            <h3 style={{ color: 'var(--text-muted)' }}>لا يوجد حجوزات مسجلة حالياً</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>ابدأ بإضافة أول حجز عبر الزر في الأعلى</p>
-          </div>
+          <div className="card" style={{ gridColumn: '1/-1', padding: '60px', textAlign: 'center' }}><p>لا يوجد حجوزات</p></div>
         ) : (
-          [...reservations].sort((a, b) => {
-            const dateA = new Date(`${a.date || ''} ${a.time || ''}`);
-            const dateB = new Date(`${b.date || ''} ${b.time || ''}`);
-            return dateA - dateB;
-          }).map(res => (
-            <div key={res.id} className="glass-card" style={{ padding: '28px', position: 'relative', borderTop: `4px solid ${res.status === 'confirmed' ? 'var(--success)' : '#8b5cf6'}`, transition: 'transform 0.2s' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <span style={{ fontSize: '0.8rem', background: 'rgba(139, 92, 246, 0.1)', padding: '6px 12px', borderRadius: '20px', color: '#8b5cf6', fontWeight: 'bold' }}>#{res.id}</span>
-                <span style={{
-                  fontSize: '0.8rem',
-                  background: res.status === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                  color: res.status === 'confirmed' ? 'var(--success)' : 'var(--warning)',
-                  padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold'
-                }}>
-                  {res.status === 'confirmed' ? 'تم التأكيد ✅' : 'في انتظار العربون ⏳'}
-                </span>
+          reservations.map(res => (
+            <div key={res.id} className="card" style={{ borderTop: `4px solid ${res.status === 'confirmed' ? '#10b981' : '#8b5cf6'}` }}>
+              <div className="flex" style={{ justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>#{res.id}</span>
+                <span style={{ color: res.status === 'confirmed' ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>{res.status === 'confirmed' ? 'مؤكد' : 'معلق'}</span>
               </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '4px' }}>{res.customerName} {res.type === 'cafe' ? '☕' : '🍽️'}</h3>
-                <p style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '1.1rem' }}>{res.phone}</p>
+              <h3 style={{ margin: '0 0 8px 0' }}>{res.customerName}</h3>
+              <p style={{ color: 'var(--accent)', fontWeight: 'bold', margin: '0 0 12px 0' }}>{res.phone}</p>
+              <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px' }}>
+                <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الموعد</label><div>{res.time}</div></div>
+                <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الأفراد</label><div>{res.guests}</div></div>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '16px', background: 'rgba(0,0,0,0.15)', borderRadius: '12px' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>الموعد والتاريخ</p>
-                  <p style={{ fontSize: '1rem', fontWeight: '600' }}>{res.date}</p>
-                  <p style={{ fontSize: '0.9rem', color: '#8b5cf6' }}>{res.time}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>عدد الضيوف</p>
-                  <p style={{ fontSize: '1.2rem', fontWeight: '800' }}>{res.guests}</p>
-                  <p style={{ fontSize: '0.8rem' }}>أفراد</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>مبلغ التأمين</span>
-                  <span style={{ fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--warning)' }}>{res.deposit} ج.م</span>
-                </div>
-                {res.refNumber && (
-                  <div style={{ textAlign: 'left' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>رقم التحويل</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent)' }}>{res.refNumber}</span>
-                  </div>
-                )}
-              </div>
-
-              {res.notes && (
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  " {res.notes} "
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                {res.status === 'pending' ? (
-                  <button
-                    onClick={() => setConfirmingRes(res)}
-                    style={{ flex: 2, padding: '12px', borderRadius: '10px', background: 'var(--success)', border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    تأكيد الاستلام
-                  </button>
-                ) : (
-                  <div style={{ flex: 2, textAlign: 'center', color: 'var(--success)', fontWeight: 'bold', padding: '12px' }}>تم الاعتماد بنجاح</div>
-                )}
-                <button onClick={() => { if (window.confirm('هل أنت متأكد من حذف هذا الحجز؟')) deleteReservation(res.id) }} style={{ flex: 1, padding: '12px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>حذف</button>
+              <div className="flex" style={{ gap: '10px', marginTop: '16px' }}>
+                {res.status === 'pending' && <button onClick={() => setConfirmingRes(res)} className="btn-primary" style={{ flex: 1, background: 'var(--success)' }}>تأكيد</button>}
+                <button onClick={() => deleteReservation(res.id)} style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid var(--danger)' }}>حذف</button>
               </div>
             </div>
           ))
@@ -1312,6 +1071,7 @@ const ExtraTripForm = ({ onClose, initialData }) => {
       area: 'مشوار خاص',
       total: 0,
       deliveryFee: Number(formData.value),
+      source: 'external', // 🏍️ مشوار خارجي (توصيل فقط)
       itemsDescription: formData.notes,
       itemsCount: 1
     });
@@ -1373,7 +1133,14 @@ function App() {
   const [activeModal, setActiveModal] = useState('none');
   const [reeditData, setReeditData] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { isShiftOpen, deleteOrder } = useApp();
+  const { isShiftOpen, deleteOrder, userRole } = useApp();
+
+  // 🟢 حماية لضمان أن الطيار مبيشوفش غير صندوق الوارد
+  useEffect(() => {
+    if (userRole === 'driver' && activeTab !== 'inbox') {
+      setActiveTab('inbox');
+    }
+  }, [userRole, activeTab]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(prev => !prev);
@@ -1460,7 +1227,7 @@ function App() {
       {/* Mobile Menu Toggle */}
       <button className="menu-toggle" onClick={toggleSidebar}>
         <Menu size={20} />
-        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>(☰) </span>
+        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>☰</span>
       </button>
 
       {/* Overlay: click outside closes menu */}
@@ -1475,47 +1242,51 @@ function App() {
         closeSidebar={closeSidebar}
       />
       <main className="main-content">
-        {isShiftOpen && (
-          <div style={{ position: 'fixed', top: '24px', left: '32px', zIndex: 100, display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => setActiveModal('manual')}
-              className="btn-primary"
-              style={{ color: '#000000ff', background: '#15ff00c2', boxShadow: '0 4px 12px rgba(249, 234, 22, 0.50)' }}
-            >
-              <Plus size={18} />
-              <span> أوردر مـــطــعــم </span>
-            </button>
+        <div className="app-container">
+          {/* 🔴 أزرار الإضافة - مسموحة للمدير فقط */}
+          {isShiftOpen && userRole === 'admin' && (
+            <div className="flex flex-wrap" style={{ marginBottom: '24px', gap: '12px' }}>
+              <button
+                onClick={() => setActiveModal('manual')}
+                className="btn-primary"
+                style={{ flex: '1 1 auto', justifyContent: 'center', color: '#000', background: '#22c55e', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)' }}
+              >
+                <Plus size={18} />
+                <span>أوردر المطبخ</span>
+              </button>
 
-            <button
-              onClick={() => setActiveModal('external')}
-              className="btn-primary"
-              style={{ color: '#000000ff', background: '#ff5e00d0', boxShadow: '0 4px 12px rgba(249, 234, 22, 0.50)' }}
-            >
-              <Plus size={18} />
-              <span> أوردر طلبات </span>
-            </button>
+              <button
+                onClick={() => setActiveModal('external')}
+                className="btn-primary"
+                style={{ flex: '1 1 auto', justifyContent: 'center', color: '#000', background: '#f97316', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)' }}
+              >
+                <Plus size={18} />
+                <span>أوردر خارجي</span>
+              </button>
 
-            <button
-              onClick={() => setActiveModal('trip')}
-              className="btn-primary"
-              style={{ color: '#000000ff', background: '#da2929bd', boxShadow: '0 4px 12px rgba(218, 215, 10, 0.50)' }}
-            >
-              <Plus size={18} />
-              <span>مشوار خاص</span>
-            </button>
+              <button
+                onClick={() => setActiveModal('trip')}
+                className="btn-primary"
+                style={{ flex: '1 1 auto', justifyContent: 'center', color: '#000', background: '#ef4444', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
+              >
+                <Plus size={18} />
+                <span>مشوار خاص</span>
+              </button>
+            </div>
+          )}
+
+          {activeModal === 'manual' && <ManualOrderForm onClose={handleCloseModal} initialData={reeditData} />}
+          {activeModal === 'external' && <ExternalOrderForm onClose={handleCloseModal} initialData={reeditData} />}
+          {activeModal === 'trip' && <ExtraTripForm onClose={handleCloseModal} initialData={reeditData} />}
+
+          <div style={{ position: 'relative' }}>
+            {/* 🔐 تأمين الصفحات - الأدمن بس هو اللي يفتح التقارير والطيارين والداشبورد */}
+            {activeTab === 'dashboard' && userRole === 'admin' && <DashboardView />}
+            {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
+            {activeTab === 'pilots' && userRole === 'admin' && <PilotManagement />}
+            {activeTab === 'reservations' && userRole === 'admin' && <ReservationView />}
+            {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
-        )}
-
-        {activeModal === 'manual' && <ManualOrderForm onClose={handleCloseModal} initialData={reeditData} />}
-        {activeModal === 'external' && <ExternalOrderForm onClose={handleCloseModal} initialData={reeditData} />}
-        {activeModal === 'trip' && <ExtraTripForm onClose={handleCloseModal} initialData={reeditData} />}
-
-        <div style={{ position: 'relative' }}>
-          {activeTab === 'dashboard' && <DashboardView />}
-          {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
-          {activeTab === 'pilots' && <PilotManagement />}
-          {activeTab === 'reservations' && <ReservationView />}
-          {activeTab === 'reports' && <ReportsView />}
         </div>
       </main>
     </div>

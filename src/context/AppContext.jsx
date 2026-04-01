@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_PILOTS } from '../db/pilots';
 import { API_CONFIG } from '../config/apiConfig';
 
@@ -11,10 +11,15 @@ import {
   getSafeISOTime,
   generateSafeId
 } from '../utils/shiftLogic';
+import { safeParseOrder } from '../utils/safeOrderParser'; // 🛡️ استيراد محرك الحماية الجديد
 
+/**
+ * 🔴 الدالة دي هي المسؤولة عن إرسال أي تحديث عام للبيانات لـ n8n
+ * بنستخدمها عشان نبعت بيانات الأوردر الكاملة أو إحصائيات الشفت لما يتأفل
+ * مش بنوقف الواجهة (UI) لو في مشكلة في الشبكة، بنعرض بس في الـ console
+ */
 const sendToN8N = async (payload, type) => {
   try {
-    // We use a fire-and-forget approach or log if it fails, but don't block UI
     fetch(API_CONFIG.N8N_SEND_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -30,7 +35,37 @@ const sendToN8N = async (payload, type) => {
   }
 };
 
+/**
+ * 🔴 الدالة دي بتبعت تحديث "حالة الطلب" فقط لـ n8n
+ * دي اللي بتسمع في ملف الإكسل (Google Sheets) عشان تغير الحالة من pending لـ confirmed أو completed
+ * بنبعت فيها الـ order_id والـ status الجديد بس لضمان السرعة وكفاءة n8n
+ */
+const updateExternalOrderStatus = async (orderId, newStatus) => {
+  try {
+    if (!API_CONFIG.N8N_UPDATE_STATUS_URL) return;
+    fetch(API_CONFIG.N8N_UPDATE_STATUS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: String(orderId), status: newStatus })
+    }).catch(err => console.error('External Status Update Error:', err));
+  } catch (e) {
+    console.error('External Status Update Exception:', e);
+  }
+};
+
 export const AppProvider = ({ children }) => {
+  // 🔴 نظام الأدوار (Role System)
+  // بنحدد هنا إذا كان المستخدم 'admin' (مدير) أو 'driver' (طيار)
+  // ده اللي بيتحكم في ظهور الأزرار والبيانات الحساسة في السيستم
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem('user_role') || 'admin';
+  });
+
+  // حفظ الدور في المتصفح عشان ميرجعش أدمن لو عملنا Refresh
+  useEffect(() => {
+    localStorage.setItem('user_role', userRole);
+  }, [userRole]);
+
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('delivery_orders');
@@ -48,7 +83,18 @@ export const AppProvider = ({ children }) => {
   const [pilots, setPilots] = useState(() => {
     try {
       const saved = localStorage.getItem('delivery_pilots');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : INITIAL_PILOTS;
+      if (saved && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        // 🔄 مزامنة البيانات: إضافة الورديات لأي طيار قديم لا يملكها بناءً على INITIAL_PILOTS
+        return parsed.map(p => {
+          const initial = INITIAL_PILOTS.find(ip => ip.id === p.id);
+          return {
+            ...p,
+            shift: p.shift || (initial ? initial.shift : '8:00A - 6:00P') // قيمة افتراضية لو مش موجود
+          };
+        });
+      }
+      return INITIAL_PILOTS;
     } catch { return INITIAL_PILOTS; }
   });
 
@@ -112,56 +158,59 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(timer);
   }, [currentShift]);
 
-  // Polling for new external orders (n8n Integration)
-  useEffect(() => {
-    if (currentShift?.status !== 'open') return;
+  // 🔥 3. Real-time Dashboard بدون Refresh (Live System)
+  // نظام سحب الطلبات الذكي: يفحص كل 3 ثواني مع نظام محاولات ذكي عند الفشل
+  const retryRef = useRef(0);
 
-    const fetchIncomingOrders = async () => {
-      if (!API_CONFIG.AUTO_REFRESH) return;
+  useEffect(() => {
+    if (currentShift?.status !== 'open' || !API_CONFIG.AUTO_REFRESH) return;
+
+    const fetchOrdersLoop = async () => {
       try {
         const response = await fetch(API_CONFIG.N8N_FETCH_URL);
-        if (!response.ok) return;
-        const data = await response.json();
+        const responseText = await response.text();
+        const trimmedText = responseText.trim();
+        if (!trimmedText || (!trimmedText.startsWith('{') && !trimmedText.startsWith('['))) return;
 
-        if (Array.isArray(data) && data.length > 0) {
+        let result = JSON.parse(trimmedText);
+        if (Array.isArray(result)) result = result[0];
+
+        if (result && result.success && Array.isArray(result.data) && result.data.length > 0) {
           let hasNew = false;
-          const mappedOrders = data
-            .filter(extOrder =>
-              extOrder.order_id &&
-              Number(extOrder.totals?.total) > 0 &&
-              !orders.some(o => (o.originalId || o.id) === String(extOrder.order_id))
-            )
-            .map(extOrder => {
-              hasNew = true;
-              return {
-                id: generateSafeId(`EXT-${extOrder.order_id}`),
-                originalId: String(extOrder.order_id),
-                type: 'external',
-                customerName: extOrder.customer?.full_name || 'عميل خارجي',
-                phone: extOrder.customer?.phone_1 || 'غير مسجل',
-                area: extOrder.customer?.delivery_info?.area_id || 'غير محدد',
-                total: Number(extOrder.totals?.total || 0),
-                deliveryFee: Number(extOrder.totals?.delivery_fee || 0),
-                itemsDescription: extOrder.itemsSummary || 'طلب من التطبيق',
-                items: extOrder.items?.map(i => ({ name: i.name, count: i.quantity, price: i.price })) || [],
-                paymentMethod: extOrder.customer?.payment_method || 'Cash',
-                timestamp: getSafeISOTime(),
-                status: 'pending'
-              };
-            });
 
-          if (hasNew) {
+          // 🛡️ 1 & 2: استخدام محرك التحقق والترميم الذكي
+          const mappedOrders = result.data
+            .map(safeParseOrder) // استخدام الفلتر الذكي
+            .filter(Boolean)     // إزالة أي سجل مكسور تماماً
+            .filter(safeOrder => !orders.some(o => (o.originalId || o.id) === String(safeOrder.originalId)));
+
+          if (mappedOrders.length > 0) {
+            hasNew = true;
             setOrders(prev => [...mappedOrders, ...prev]);
-            new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(e => console.log('Audio disabled by browser'));
-            logAction('EXT_SYNC', `Synced ${mappedOrders.length} new orders from n8n`, 'System');
+            new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => { });
+            logAction('LIVE_SYNC', `Real-time: Received ${mappedOrders.length} orders`, 'System');
           }
         }
-      } catch (e) {
-        console.error('Failed to fetch from n8n:', e);
+
+        // تصفير عداد المحاولات عند النجاح
+        retryRef.current = 0;
+
+      } catch (err) {
+        console.error('📡 Polling Error:', err);
+        retryRef.current += 1;
+
+        // المحاولات: لو فشل السيستم يحاول 5 مرات كل 5 ثواني
+        if (retryRef.current >= 5) {
+          console.warn('❌ Poll cycle failed 5 times. Pausing for next interval...');
+          retryRef.current = 0; // ريسيت للمحاولة القادمة
+        }
       }
     };
 
-    const pollTimer = setInterval(fetchIncomingOrders, API_CONFIG.POLLING_INTERVAL); // Use interval from config
+    // سرعة التحديث: 3 ثانية في حالة النجاح، 5 ثواني في حالة الفشل
+    const nextInterval = retryRef.current > 0 ? 5000 : 3000;
+    const pollTimer = setInterval(fetchOrdersLoop, nextInterval);
+
     return () => clearInterval(pollTimer);
   }, [orders, currentShift]);
 
@@ -169,44 +218,16 @@ export const AppProvider = ({ children }) => {
     if (currentShift?.status !== 'open') return;
     try {
       const response = await fetch(API_CONFIG.N8N_FETCH_URL);
-      if (!response.ok) return;
-      const data = await response.json();
-
-      if (Array.isArray(data) && data.length > 0) {
-        let hasNew = false;
-        const mappedOrders = data
-          .filter(extOrder =>
-            extOrder.order_id &&
-            Number(extOrder.totals?.total) > 0 &&
-            !orders.some(o => (o.originalId || o.id) === String(extOrder.order_id))
-          )
-          .map(extOrder => {
-            hasNew = true;
-            return {
-              id: generateSafeId(`EXT-${extOrder.order_id}`),
-              originalId: String(extOrder.order_id),
-              type: 'external',
-              customerName: extOrder.customer?.full_name || 'عميل خارجي',
-              phone: extOrder.customer?.phone_1 || 'غير مسجل',
-              area: extOrder.customer?.delivery_info?.area_id || 'غير محدد',
-              total: Number(extOrder.totals?.total || 0),
-              deliveryFee: Number(extOrder.totals?.delivery_fee || 0),
-              itemsDescription: extOrder.itemsSummary || 'طلب من التطبيق',
-              items: extOrder.items?.map(i => ({ name: i.name, count: i.quantity, price: i.price })) || [],
-              paymentMethod: extOrder.customer?.payment_method || 'Cash',
-              timestamp: getSafeISOTime(),
-              status: 'pending'
-            };
-          });
-
-        if (hasNew) {
-          setOrders(prev => [...mappedOrders, ...prev]);
-          new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(e => console.log('Audio disabled by browser'));
-          logAction('EXT_SYNC', `Manual Sync: ${mappedOrders.length} new orders from n8n`, 'System');
-        }
+      const result = await response.json();
+      if (result.success && result.data) {
+        const mapped = result.data.map(safeParseOrder).filter(Boolean);
+        setOrders(prev => {
+          const onlyNew = mapped.filter(m => !prev.some(p => (p.originalId || p.id) === m.originalId));
+          return [...onlyNew, ...prev];
+        });
       }
     } catch (e) {
-      console.error('Manual Sync Failed:', e);
+      console.error('Manual sync failed', e);
     }
   };
 
@@ -388,6 +409,7 @@ export const AppProvider = ({ children }) => {
     ));
     logAction('ORDER_CANCEL', `Order #${orderId} cancelled. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
+    updateExternalOrderStatus(order.originalId || order.id, 'cancelled');
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
@@ -401,6 +423,7 @@ export const AppProvider = ({ children }) => {
         : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
+    updateExternalOrderStatus(order.originalId || order.id, 'confirmed');
   };
 
   // Step 2: Assign Driver (Locks Order, Ready to Print)
@@ -415,6 +438,7 @@ export const AppProvider = ({ children }) => {
     ));
     const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
+    updateExternalOrderStatus(order.originalId || order.id, 'driver_assigned');
   };
 
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
@@ -436,6 +460,7 @@ export const AppProvider = ({ children }) => {
     ));
 
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
+    updateExternalOrderStatus(order.originalId || order.id, 'out_for_delivery');
   };
 
   // Step 4: Complete (Pilot Returns -> Status Available + Queue Update)
@@ -459,6 +484,7 @@ export const AppProvider = ({ children }) => {
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed' }, 'ORDER_COMPLETE');
+    updateExternalOrderStatus(order.originalId || order.id, 'completed');
   };
 
   const failDelivery = (orderId, reason) => {
@@ -481,6 +507,7 @@ export const AppProvider = ({ children }) => {
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason }, 'ORDER_FAIL');
+    updateExternalOrderStatus(order.originalId || order.id, 'failed_delivery');
   };
 
   const togglePilotShift = (pilotId) => {
@@ -537,30 +564,42 @@ export const AppProvider = ({ children }) => {
       let feeEarnings = 0;
       let restaurantEarnings = 0;
       let talabatEarnings = 0;
+      let onlineEarnings = 0;
       let tripEarnings = 0;
       let ordersCount = 0;
       let tripsCount = 0;
       let restaurantOrdersCount = 0;
       let talabatOrdersCount = 0;
+      let onlineOrdersCount = 0;
 
-      pOrders.forEach(o => {
+      [...pOrders, ...pFailed].forEach(o => {
         const fee = Number(o.deliveryFee) || 0;
-        if (o.type === 'trip') {
-          feeEarnings += fee;
-          tripEarnings += fee;
+        const source = o.source || (o.type === 'trip' ? 'external' : o.type === 'talabat' || o.type === 'external' ? 'talabat' : 'manual');
+        const isCompleted = o.status === 'completed';
+
+        if (source === 'external') {
+          if (isCompleted) {
+            feeEarnings += fee;
+            tripEarnings += fee;
+          }
           tripsCount++;
-        } else if (o.type === 'talabat' || o.type === 'external') {
-          const share = fee / 2;
-          feeEarnings += share;
-          talabatEarnings += share;
-          ordersCount++;
-          talabatOrdersCount++;
         } else {
           const share = fee / 2;
-          feeEarnings += share;
-          restaurantEarnings += share;
-          ordersCount++;
-          restaurantOrdersCount++;
+          if (isCompleted) {
+            feeEarnings += share;
+            ordersCount++;
+          }
+
+          if (source === 'online') {
+            if (isCompleted) onlineEarnings += share;
+            onlineOrdersCount++;
+          } else if (source === 'talabat') {
+            if (isCompleted) talabatEarnings += share;
+            talabatOrdersCount++;
+          } else {
+            if (isCompleted) restaurantEarnings += share;
+            restaurantOrdersCount++;
+          }
         }
       });
 
@@ -572,11 +611,13 @@ export const AppProvider = ({ children }) => {
         tripsCount,
         restaurantOrdersCount,
         talabatOrdersCount,
+        onlineOrdersCount,
         failedCount: pFailed.length,
         totalMinutes,
         feeEarnings,
         restaurantEarnings,
         talabatEarnings,
+        onlineEarnings,
         tripEarnings,
         attendancePay,
         totalEarnings: feeEarnings + attendancePay
@@ -593,6 +634,7 @@ export const AppProvider = ({ children }) => {
 
     return {
       totalOrders: finishedOrders.length + failedOrders.length,
+      onlineOrdersCount: finishedOrders.filter(o => o.source === 'online').length + failedOrders.filter(o => o.source === 'online').length,
       averageDelay,
       activeDelaysCount: delays.filter(d => d > 30).length, // Orders delayed more than 30 mins
       pilotPerformance,
@@ -631,7 +673,7 @@ export const AppProvider = ({ children }) => {
     logAction('RES_DELETE', `Reservation ${id} deleted`, 'Supervisor');
   };
 
-  const addNewPilot = (name, phone) => {
+  const addNewPilot = (name, phone, shift) => {
     if (pilots.some(p => p.name === name)) {
       alert('اسم الطيار موجود بالفعل!');
       return;
@@ -640,6 +682,7 @@ export const AppProvider = ({ children }) => {
       id: `p-${Date.now()}`,
       name,
       phone,
+      shift: shift || 'غير محدد',
       state: 'available',
       shiftStatus: 'closed',
       vehicle: 'موتوسيكل',
@@ -655,6 +698,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       orders, pilots, currentShift, dailyReports, auditLogs, reservations,
+      userRole, setUserRole, // 🔐 تصدير بيانات الدور لباقي السيستم
       openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot,
       addReservation, confirmReservation, deleteReservation,
       isShiftOpen: currentShift?.status === 'open',
