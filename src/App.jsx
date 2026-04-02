@@ -12,8 +12,8 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return (R * c).toFixed(1);
 };
@@ -81,6 +81,17 @@ const PilotManagement = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>إدارة الطيارين</h2>
+        <button
+          onClick={() => {
+            const pass = prompt('أدخل كلمة المرور لإضافة طيار جديد:');
+            if (pass === '8080') setShowAddModal(true);
+            else if (pass !== null) alert('كلمة المرور غير صحيحة');
+          }}
+          className="btn-primary"
+          style={{ background: 'var(--accent)', padding: '10px 20px', borderRadius: '12px', fontSize: '0.95rem' }}
+        >
+          <Plus size={18} /> إضافة طيار جديد
+        </button>
       </header>
 
       {/* Modal for Add Pilot */}
@@ -145,30 +156,6 @@ const PilotManagement = () => {
           </div>
         ))}
       </div>
-      {/* Floating Add Button - Bottom Left (Matches Reservation Style) */}
-      <button
-        onClick={() => {
-          const pass = prompt('أدخل كلمة المرور لإضافة طيار جديد:');
-          if (pass === '8080') setShowAddModal(true);
-          else if (pass !== null) alert('كلمة المرور غير صحيحة');
-        }}
-        className="btn-primary"
-        style={{
-          position: 'fixed',
-          bottom: '40px',
-          left: '10%',
-          transform: 'translateX(-50%)',
-          background: 'var(--accent)',
-          padding: '16px 32px',
-          borderRadius: '20px',
-          boxShadow: '0 15px 35px rgba(16, 185, 129, 0.4)',
-          zIndex: 100,
-          border: '2px solid rgba(255,255,255,0.1)',
-          fontSize: '1.1rem'
-        }}
-      >
-        <Plus size={24} /> إضافة طيار جديد
-      </button>
     </div>
   );
 };
@@ -595,13 +582,13 @@ const ManualOrderForm = ({ onClose, initialData }) => {
           <h2 className="flex" style={{ fontSize: '1.2rem' }}><Monitor size={22} color="var(--primary)" /> تفاصيل الأوردر</h2>
           <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', textAlign: 'center' }}>
             <label style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>رقم بون الكول سنتر</label>
-            <input 
-              type="text" 
-              style={{ background: 'transparent', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.6rem', fontWeight: '900', textAlign: 'center' }} 
-              value={formData.receiptNo} 
-              onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} 
-              required 
-              autoFocus 
+            <input
+              type="text"
+              style={{ background: 'transparent', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: '12px', width: '100%', padding: '12px', fontSize: '1.6rem', fontWeight: '900', textAlign: 'center' }}
+              value={formData.receiptNo}
+              onChange={e => setFormData({ ...formData, receiptNo: e.target.value })}
+              required
+              autoFocus
               placeholder="000"
             />
           </div>
@@ -610,7 +597,7 @@ const ManualOrderForm = ({ onClose, initialData }) => {
           <div style={{ position: 'relative' }}>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>📍 ابحث عن المنطقة</label>
             <div style={{ position: 'relative' }}>
-              <input 
+              <input
                 type="text"
                 placeholder="اكتب اسم المنطقة (مثلاً: المطرية)..."
                 value={areaSearch}
@@ -625,9 +612,9 @@ const ManualOrderForm = ({ onClose, initialData }) => {
             </div>
 
             {showAreaSuggestions && areaSearch && (
-              <div className="glass-card" style={{ 
-                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, 
-                maxHeight: '280px', overflowY: 'auto', marginTop: '8px', 
+              <div className="glass-card" style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                maxHeight: '280px', overflowY: 'auto', marginTop: '8px',
                 border: '1px solid var(--border)', background: '#111827',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
               }}>
@@ -642,17 +629,17 @@ const ManualOrderForm = ({ onClose, initialData }) => {
                       {zoneAreas.map(area => {
                         const dist = calculateDistance(RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng, area.lat, area.lng);
                         return (
-                          <div 
-                            key={area.name} 
+                          <div
+                            key={area.name}
                             onClick={() => {
-                              setFormData({ 
-                                ...formData, 
-                                area: area.name, 
-                                lat: area.lat, 
-                                lng: area.lng, 
-                                zone: area.zone, 
+                              setFormData({
+                                ...formData,
+                                area: area.name,
+                                lat: area.lat,
+                                lng: area.lng,
+                                zone: area.zone,
                                 distance: dist,
-                                deliveryFee: area.fee 
+                                deliveryFee: area.fee
                               });
                               setAreaSearch(area.name);
                               setShowAreaSuggestions(false);
@@ -661,8 +648,8 @@ const ManualOrderForm = ({ onClose, initialData }) => {
                             style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}
                           >
                             <div>
-                                <span style={{ fontWeight: 'bold' }}>{area.name}</span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '8px' }}>({dist} كم)</span>
+                              <span style={{ fontWeight: 'bold' }}>{area.name}</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '8px' }}>({dist} كم)</span>
                             </div>
                             <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>{area.fee} ج.م</span>
                           </div>
@@ -678,26 +665,26 @@ const ManualOrderForm = ({ onClose, initialData }) => {
           {/* Location Feedback Badges */}
           {formData.area && (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                 <Ruler size={14} /> {formData.distance} كم من المطعم
-               </div>
-               <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.75rem' }}>
-                 نطاق التوصيل: {formData.zone}
-               </div>
-               {isOutsideRadius && (
-                  <div style={{ width: '100%', padding: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '8px', marginTop: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShieldAlert size={18} /> خارج نطاق التوصيل (أكثر من 15كم)
-                  </div>
-               )}
+              <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Ruler size={14} /> {formData.distance} كم من المطعم
+              </div>
+              <div style={{ padding: '4px 10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.75rem' }}>
+                نطاق التوصيل: {formData.zone}
+              </div>
+              {isOutsideRadius && (
+                <div style={{ width: '100%', padding: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '8px', marginTop: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldAlert size={18} /> خارج نطاق التوصيل (أكثر من 15كم)
+                </div>
+              )}
             </div>
           )}
 
           <div className="grid" style={{ gap: '12px' }}>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '-4px' }}>💰 خدمة التوصيل (مثبتة حسب النطاق)</label>
-            <input 
-                readOnly 
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'not-allowed' }}
-                value={`${formData.deliveryFee} ج.م`}
+            <input
+              readOnly
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'not-allowed' }}
+              value={`${formData.deliveryFee} ج.م`}
             />
           </div>
 
@@ -733,20 +720,20 @@ const ManualOrderForm = ({ onClose, initialData }) => {
           </div>
 
           {(formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && (
-            <div style={{ 
-              background: 'rgba(255,255,255,0.03)', 
-              padding: '16px', 
-              borderRadius: '12px', 
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              padding: '16px',
+              borderRadius: '12px',
               border: '1px dashed var(--border)',
               textAlign: 'center'
             }}>
               <p style={{ fontSize: '0.85rem', marginBottom: '10px', color: 'var(--accent)', fontWeight: 'bold' }}>
                 📸 صورة إيصال التحويل (إجباري)
               </p>
-              <input 
-                required 
-                type="file" 
-                accept="image/*" 
+              <input
+                required
+                type="file"
+                accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
@@ -754,34 +741,34 @@ const ManualOrderForm = ({ onClose, initialData }) => {
                     reader.onloadend = () => setFormData({ ...formData, paymentProof: reader.result });
                     reader.readAsDataURL(file);
                   }
-                }} 
-                style={{ fontSize: '0.8rem', color: 'white', cursor: 'pointer' }} 
+                }}
+                style={{ fontSize: '0.8rem', color: 'white', cursor: 'pointer' }}
               />
               {formData.paymentProof && (
-                 <img 
-                    src={formData.paymentProof} 
-                    alt="Success" 
-                    style={{ marginTop: '12px', width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--accent)' }} 
-                 />
+                <img
+                  src={formData.paymentProof}
+                  alt="Success"
+                  style={{ marginTop: '12px', width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--accent)' }}
+                />
               )}
             </div>
           )}
 
           <div className="flex" style={{ gap: '12px', marginTop: '20px' }}>
-            <button 
-                onClick={handleSubmit} 
-                disabled={
-                    isOutsideRadius || 
-                    !formData.receiptNo || 
-                    !formData.area ||
-                    ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)
-                }
-                className="btn-primary" 
-                style={{ 
-                    flex: 2, justifyContent: 'center', height: '50px', fontSize: '1.1rem',
-                    opacity: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
-                    cursor: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
-                }}
+            <button
+              onClick={handleSubmit}
+              disabled={
+                isOutsideRadius ||
+                !formData.receiptNo ||
+                !formData.area ||
+                ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)
+              }
+              className="btn-primary"
+              style={{
+                flex: 2, justifyContent: 'center', height: '50px', fontSize: '1.1rem',
+                opacity: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
+                cursor: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
+              }}
             >
               حفظ الأوردر
             </button>
