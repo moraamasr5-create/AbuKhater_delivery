@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_PILOTS } from '../db/pilots';
 import { API_CONFIG } from '../config/apiConfig';
+import { supabaseService } from '../services/supabaseService';
 
 const AppContext = createContext();
 
@@ -11,43 +12,27 @@ import {
   getSafeISOTime,
   generateSafeId
 } from '../utils/shiftLogic';
-import { safeParseOrder } from '../utils/safeOrderParser'; // 🛡️ استيراد محرك الحماية الجديد
+import { safeParseOrder } from '../utils/safeOrderParser';
 
 /**
- * 🔴 الدالة دي هي المسؤولة عن إرسال أي تحديث عام للبيانات لـ n8n
- * بنستخدمها عشان نبعت بيانات الأوردر الكاملة أو إحصائيات الشفت لما يتأفل
- * مش بنوقف الواجهة (UI) لو في مشكلة في الشبكة، بنعرض بس في الـ console
+ * 🔴 الدالة دي هي المسؤولة عن إرسال أي تحديث عام للبيانات لـ Supabase
  */
 const sendToN8N = async (payload, type) => {
   try {
-    fetch(API_CONFIG.N8N_SEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        source: 'Delivery_System_React',
-        timestamp: getSafeISOTime(),
-        type,
-        payload
-      })
-    }).catch(err => console.error('n8n Webhook Error:', err));
+    if (type === 'SHIFT_CLOSE') {
+      await supabaseService.saveShiftReport(payload);
+    }
   } catch (e) {
-    console.error('n8n Integration Error:', e);
+    console.error('Supabase Integration Error:', e);
   }
 };
 
 /**
- * 🔴 الدالة دي بتبعت تحديث "حالة الطلب" فقط لـ n8n
- * دي اللي بتسمع في ملف الإكسل (Google Sheets) عشان تغير الحالة من pending لـ confirmed أو completed
- * بنبعت فيها الـ order_id والـ status الجديد بس لضمان السرعة وكفاءة n8n
+ * 🔴 الدالة دي بتبعت تحديث "حالة الطلب" مباشرة لـ Supabase
  */
 const updateExternalOrderStatus = async (orderId, newStatus) => {
   try {
-    if (!API_CONFIG.N8N_UPDATE_STATUS_URL) return;
-    fetch(API_CONFIG.N8N_UPDATE_STATUS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: String(orderId), status: newStatus })
-    }).catch(err => console.error('External Status Update Error:', err));
+    await supabaseService.updateOrderStatus(orderId, newStatus);
   } catch (e) {
     console.error('External Status Update Exception:', e);
   }
@@ -159,7 +144,7 @@ export const AppProvider = ({ children }) => {
   }, [currentShift]);
 
   // 🔥 3. Real-time Dashboard بدون Refresh (Live System)
-  // نظام سحب الطلبات الذكي: يفحص كل 3 ثواني مع نظام محاولات ذكي عند الفشل
+  // جلب الطلبات النشطة والجديدة من Supabase مباشرة
   const retryRef = useRef(0);
 
   useEffect(() => {
@@ -167,65 +152,47 @@ export const AppProvider = ({ children }) => {
 
     const fetchOrdersLoop = async () => {
       try {
-        const response = await fetch(API_CONFIG.N8N_FETCH_URL);
-        const responseText = await response.text();
-        const trimmedText = responseText.trim();
-        if (!trimmedText || (!trimmedText.startsWith('{') && !trimmedText.startsWith('['))) return;
-
-        let result = JSON.parse(trimmedText);
-        if (Array.isArray(result)) result = result[0];
-
-        if (result && result.success && Array.isArray(result.data) && result.data.length > 0) {
-          let hasNew = false;
-
-          // 🛡️ 1 & 2: استخدام محرك التحقق والترميم الذكي
-          const mappedOrders = result.data
-            .map(safeParseOrder) // استخدام الفلتر الذكي
-            .filter(Boolean)     // إزالة أي سجل مكسور تماماً
-            .filter(safeOrder => !orders.some(o => (o.originalId || o.id) === String(safeOrder.originalId)));
-
-          if (mappedOrders.length > 0) {
-            hasNew = true;
-            setOrders(prev => [...mappedOrders, ...prev]);
-            new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => { });
-            logAction('LIVE_SYNC', `Real-time: Received ${mappedOrders.length} orders`, 'System');
-          }
+        const fetchedOrders = await supabaseService.fetchOrders();
+        if (fetchedOrders && fetchedOrders.length > 0) {
+          setOrders(prev => {
+            const newOrders = fetchedOrders.filter(fo => !prev.some(o => (o.originalId || o.id) === fo.originalId));
+            if (newOrders.length > 0) {
+              new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => {});
+              logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrders.length} new orders`, 'System');
+              return [...newOrders, ...prev];
+            }
+            return prev;
+          });
         }
-
-        // تصفير عداد المحاولات عند النجاح
         retryRef.current = 0;
-
       } catch (err) {
-        console.error('📡 Polling Error:', err);
+        console.error('📡 Supabase Polling Error:', err);
         retryRef.current += 1;
-
-        // المحاولات: لو فشل السيستم يحاول 5 مرات كل 5 ثواني
         if (retryRef.current >= 5) {
-          console.warn('❌ Poll cycle failed 5 times. Pausing for next interval...');
-          retryRef.current = 0; // ريسيت للمحاولة القادمة
+          console.warn('❌ Poll cycle failed 5 times.');
+          retryRef.current = 0;
         }
       }
     };
 
-    // سرعة التحديث: 3 ثانية في حالة النجاح، 5 ثواني في حالة الفشل
-    const nextInterval = retryRef.current > 0 ? 5000 : 3000;
+    // سرعة التحديث: فحص دوري خفيف كل 5 ثواني
+    const nextInterval = retryRef.current > 0 ? 10000 : 5000;
     const pollTimer = setInterval(fetchOrdersLoop, nextInterval);
 
+    // الجلب الأولي عند فتح الوردية
+    fetchOrdersLoop();
+
     return () => clearInterval(pollTimer);
-  }, [orders, currentShift]);
+  }, [currentShift]);
 
   const syncExternalOrders = async () => {
     if (currentShift?.status !== 'open') return;
     try {
-      const response = await fetch(API_CONFIG.N8N_FETCH_URL);
-      const result = await response.json();
-      if (result.success && result.data) {
-        const mapped = result.data.map(safeParseOrder).filter(Boolean);
-        setOrders(prev => {
-          const onlyNew = mapped.filter(m => !prev.some(p => (p.originalId || p.id) === m.originalId));
-          return [...onlyNew, ...prev];
-        });
-      }
+      const fetchedOrders = await supabaseService.fetchOrders();
+      setOrders(prev => {
+        const onlyNew = fetchedOrders.filter(fo => !prev.some(p => (p.originalId || p.id) === fo.originalId));
+        return [...onlyNew, ...prev];
+      });
     } catch (e) {
       console.error('Manual sync failed', e);
     }
