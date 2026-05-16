@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Check, X, AlertCircle, UserPlus, RotateCcw, Clock, Bike, RefreshCw } from 'lucide-react';
+import { Check, X, AlertCircle, UserPlus, RotateCcw, Clock, Bike, RefreshCw, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion'; // 🪄 استيراد مكتبة التحريك لعمل الـ Live Dashboard
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
@@ -34,7 +34,7 @@ const OrderInbox = ({ onReedit }) => {
     const [auditTimers, setAuditTimers] = useState({});
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [previewImage, setPreviewImage] = useState(null); // 🖼️ حالة عرض الصورة الكبيرة (Modal)
-
+    const [expandedOrderId, setExpandedOrderId] = useState(null); // 🛒 حالة عرض تفاصيل السلة
     const handleManualRefresh = async () => {
         setIsRefreshing(true);
         try {
@@ -562,6 +562,61 @@ const OrderInbox = ({ onReedit }) => {
                                             <button onClick={() => handleCancel(order.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white' }} title="إلغاء الطلب"><X size={20} /></button>
                                         )}
                                     </div>
+
+                                    {/* 🛒 سلة المشتريات (Cart Expandable Section) */}
+                                    {order.items && order.items.length > 0 && (
+                                        <div style={{ gridColumn: '1 / -1', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                                            <button
+                                                onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                                                style={{
+                                                    background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)', border: '1px solid rgba(79, 70, 229, 0.2)',
+                                                    padding: '8px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px',
+                                                    width: 'fit-content', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s ease'
+                                                }}
+                                                className="hover-scale"
+                                            >
+                                                <ShoppingCart size={18} />
+                                                <span>عرض الطلبات ({order.items?.length || 0})</span>
+                                                {expandedOrderId === order.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {expandedOrderId === order.id && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        style={{ overflow: 'hidden', marginTop: '12px' }}
+                                                    >
+                                                        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)' }}>
+                                                            <h5 style={{ color: 'var(--text-muted)', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>تفاصيل المنتجات</h5>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                {order.items?.map((item, idx) => (
+                                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px' }}>
+                                                                        <div>
+                                                                            <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{item.name}</span>
+                                                                            {item.category && <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>{item.category}</span>}
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{item.count}x</span>
+                                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{item.price} ج</span>
+                                                                            <span style={{ fontWeight: 'bold', color: 'var(--accent)', minWidth: '50px', textAlign: 'right' }}>{(item.count || 1) * (item.price || 0)} ج</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>المجموع (Subtotal): <strong style={{ color: 'var(--text-main)' }}>{order.subtotal || order.total - (order.deliveryFee || 0)} ج.م</strong></div>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>التوصيل (Delivery): <strong style={{ color: 'var(--text-main)' }}>{order.deliveryFee || 0} ج.م</strong></div>
+                                                                {order.serviceFee > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>الخدمة (Service): <strong style={{ color: 'var(--text-main)' }}>{order.serviceFee} ج.م</strong></div>}
+                                                                <div style={{ color: 'var(--accent)', fontSize: '1.2rem', marginTop: '4px', fontWeight: '900' }}>الإجمالي (Total): {order.total} ج.م</div>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    )}
 
                                 </motion.div>
                             );

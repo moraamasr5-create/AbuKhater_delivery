@@ -24,12 +24,15 @@ export const supabaseService = {
 
       // تحويل هيكل Supabase إلى الهيكل الذي يتوقعه نظام الداشبورد
       return data.map(row => {
-        const orderId = row.raw_payload?.order_id || `#${row.id.slice(0, 6)}`;
-        const items = row.raw_payload?.items || [];
+        const rawPayload = row.raw_payload || {};
+        const orderId = rawPayload.order_id || `#${row.id.slice(0, 6)}`;
+        const items = rawPayload.items || [];
         const safeItems = items.map(item => ({
           name: item.name || item.item_name || "صنف غير معروف",
           count: Number(item.quantity || item.count || 1),
-          price: Number(item.price || item.unit_price || 0)
+          price: Number(item.price || item.unit_price || 0),
+          category: item.category || item.category_name || "عام",
+          total: Number(item.total || (Number(item.price || 0) * Number(item.quantity || 1)))
         }));
 
         const itemsDescription = safeItems.length > 0
@@ -41,19 +44,24 @@ export const supabaseService = {
           id: `EXT-${orderId}`,
           originalId: String(orderId),
           type: row.order_type === 'delivery' ? 'online' : 'takeaway',
-          customerName: row.customer_name || 'عميل غير معروف',
-          phone: row.customer_phone || 'غير مسجل',
-          phone2: row.customer_phone_2 || '',
-          area: row.delivery_address || 'استلام من المطعم',
+          customerName: row.customer_name || rawPayload.customer?.full_name || 'عميل غير معروف',
+          phone: row.customer_phone || rawPayload.customer?.phone_1 || 'غير مسجل',
+          phone2: row.customer_phone_2 || rawPayload.customer?.phone_2 || '',
+          area: row.delivery_address || rawPayload.customer?.delivery_info?.address || 'استلام من المطعم',
           total: Number(row.total_amount) || 0,
           deliveryFee: Number(row.delivery_fee) || 0,
+          subtotal: Number(rawPayload.totals?.subtotal || 0),
+          serviceFee: Number(row.service_fee || rawPayload.totals?.service_fee || 0),
           items: safeItems,
           itemsDescription: itemsDescription,
-          paymentMethod: row.payment_method || 'Cash',
-          paymentScreenshot: row.payment_screenshot || null,
+          paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',
+          paymentScreenshot: row.payment_screenshot || rawPayload.payment?.screenshot || null,
           status: row.status || 'pending',
-          timestamp: row.created_at || new Date().toISOString(),
-          source: 'online'
+          timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
+          source: 'online',
+          lat: row.latitude || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
+          lng: row.longitude || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
+          rawPayload: rawPayload
         };
       });
     } catch (err) {
