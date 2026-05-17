@@ -183,6 +183,8 @@ export const supabaseService = {
           phone: driverData.phone,
           start_shift: parts[0]?.trim() || null,
           end_shif: parts[1]?.trim() || null,
+          number_id: driverData.number_id ? parseInt(driverData.number_id, 10) || null : null,
+          number_motor: driverData.number_motor?.trim() || null,
           status: false
         }])
         .select();

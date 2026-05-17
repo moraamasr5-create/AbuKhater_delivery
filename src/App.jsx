@@ -54,6 +54,9 @@ const PilotManagement = () => {
   const [newPilotName, setNewPilotName] = useState('');
   const [newPilotPhone, setNewPilotPhone] = useState('');
   const [newPilotShift, setNewPilotShift] = useState('8:00A - 6:00P');
+  const [newPilotIdNumber, setNewPilotIdNumber] = useState('');
+  const [newPilotMotor, setNewPilotMotor] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleToggleShift = (pilotId, currentStatus) => {
     const password = prompt(currentStatus === 'open'
@@ -67,14 +70,31 @@ const PilotManagement = () => {
     }
   };
 
-  const onAddPilot = (e) => {
+  const onAddPilot = async (e) => {
     e.preventDefault();
-    if (!newPilotName) return;
-    addNewPilot(newPilotName, newPilotPhone, newPilotShift);
-    setShowAddModal(false);
-    setNewPilotName('');
-    setNewPilotPhone('');
-    setNewPilotShift('8:00A - 6:00P');
+    if (!newPilotName || !newPilotPhone) return;
+    
+    setIsSubmitting(true);
+    const result = await addNewPilot({
+      name: newPilotName,
+      phone: newPilotPhone,
+      shift: newPilotShift,
+      number_id: newPilotIdNumber,
+      number_motor: newPilotMotor
+    });
+    setIsSubmitting(false);
+
+    if (result && result.success) {
+      alert('✅ تم إضافة الطيار بنجاح');
+      setShowAddModal(false);
+      setNewPilotName('');
+      setNewPilotPhone('');
+      setNewPilotShift('8:00A - 6:00P');
+      setNewPilotIdNumber('');
+      setNewPilotMotor('');
+    } else {
+      alert('❌ ' + (result?.error || 'حدث خطأ أثناء الإضافة'));
+    }
   };
 
   return (
@@ -102,7 +122,7 @@ const PilotManagement = () => {
             <form onSubmit={onAddPilot} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input
                 autoFocus
-                placeholder="اسم الطيار"
+                placeholder="اسم الطيار (مطلوب)"
                 value={newPilotName}
                 onChange={e => setNewPilotName(e.target.value)}
                 className="glass-card"
@@ -110,12 +130,27 @@ const PilotManagement = () => {
                 required
               />
               <input
-                placeholder="رقم الهاتف"
+                placeholder="الرقم القومي (اختياري)"
+                type="number"
+                value={newPilotIdNumber}
+                onChange={e => setNewPilotIdNumber(e.target.value)}
+                className="glass-card"
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+              />
+              <input
+                placeholder="رقم الهاتف (مطلوب)"
                 value={newPilotPhone}
                 onChange={e => setNewPilotPhone(e.target.value)}
                 className="glass-card"
                 style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                 required
+              />
+              <input
+                placeholder="رقم لوحة الموتوسيكل (اختياري)"
+                value={newPilotMotor}
+                onChange={e => setNewPilotMotor(e.target.value)}
+                className="glass-card"
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
               />
               <input
                 placeholder="مواعيد العمل (مثال: 8:00A - 6:00P)"
@@ -126,8 +161,10 @@ const PilotManagement = () => {
                 required
               />
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--accent)' }}>حفظ</button>
-                <button type="button" onClick={() => setShowAddModal(false)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '8px', borderRadius: '8px', cursor: 'pointer', flex: 0.5 }}>إلغاء</button>
+                <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--accent)', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  {isSubmitting ? 'جاري الإضافة...' : 'حفظ'}
+                </button>
+                <button type="button" onClick={() => setShowAddModal(false)} disabled={isSubmitting} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '8px', borderRadius: '8px', cursor: isSubmitting ? 'not-allowed' : 'pointer', flex: 0.5 }}>إلغاء</button>
               </div>
             </form>
           </div>

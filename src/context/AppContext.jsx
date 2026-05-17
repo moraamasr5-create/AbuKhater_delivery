@@ -652,13 +652,14 @@ export const AppProvider = ({ children }) => {
     logAction('RES_DELETE', `Reservation ${id} deleted`, 'Supervisor');
   };
 
-  const addNewPilot = async (name, phone, shift) => {
+  const addNewPilot = async (pilotData) => {
+    const { name, phone, shift, number_id, number_motor } = pilotData;
+    
     if (pilots.some(p => p.name === name)) {
-      alert('اسم الطيار موجود بالفعل!');
-      return;
+      return { success: false, error: 'اسم الطيار موجود بالفعل!' };
     }
     
-    const savedData = await supabaseService.addDeliveryDriver({ name, phone, shift });
+    const savedData = await supabaseService.addDeliveryDriver(pilotData);
     
     if (savedData && savedData.length > 0) {
       const row = savedData[0];
@@ -666,6 +667,8 @@ export const AppProvider = ({ children }) => {
         id: row.id,
         name,
         phone,
+        numberId: row.number_id,
+        numberMotor: row.number_motor,
         shift: shift || 'غير محدد',
         state: 'available',
         shiftStatus: 'closed',
@@ -677,8 +680,9 @@ export const AppProvider = ({ children }) => {
       };
       setPilots(prev => [...prev, newPilot]);
       logAction('PILOT_ADD', `New pilot added: ${name}`, 'Manager');
+      return { success: true };
     } else {
-      alert('حدث خطأ أثناء إضافة الطيار.');
+      return { success: false, error: 'حدث خطأ أثناء إضافة الطيار.' };
     }
   };
 
