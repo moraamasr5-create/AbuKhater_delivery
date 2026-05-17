@@ -280,24 +280,7 @@ const OrderInbox = ({ onReedit }) => {
                                                     📍 {normalized.address}
                                                 </p>
 
-                                                {/* 3. Smart Payment Summary */}
-                                                <div style={{
-                                                    padding: '10px 16px', background: (Number(normalized.deliveryFee) + Number(normalized.total)) > 0 ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)',
-                                                    borderRadius: '12px', border: `1px solid ${(Number(normalized.deliveryFee) + Number(normalized.total)) > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}`,
-                                                    width: 'fit-content'
-                                                }}>
-                                                    {(Number(normalized.deliveryFee) + Number(normalized.total)) > 0 ? (
-                                                        <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#10b981' }}>
-                                                            💰 {normalized.deliveryFee} + {normalized.total} = {Number(normalized.deliveryFee) + Number(normalized.total)} EGP
-                                                        </span>
-                                                    ) : (
-                                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#f59e0b' }}>
-                                                            💰 لم يتم تحديد السعر
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* 4. Actions Row (Badges + Location + Screenshot) */}
+                                                {/* 3. Actions Row (Badges + Location + Screenshot) */}
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
                                                     {/* 💳 Payment Method Badge */}
                                                     {(() => {
@@ -606,10 +589,16 @@ const OrderInbox = ({ onReedit }) => {
                                                                 ))}
                                                             </div>
                                                             <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>المجموع (Subtotal): <strong style={{ color: 'var(--text-main)' }}>{order.subtotal || order.total - (order.deliveryFee || 0)} ج.م</strong></div>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>المجموع (Subtotal): <strong style={{ color: 'var(--text-main)' }}>{order.subtotal || Math.max(0, order.total - (order.deliveryFee || 0))} ج.م</strong></div>
                                                                 <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>التوصيل (Delivery): <strong style={{ color: 'var(--text-main)' }}>{order.deliveryFee || 0} ج.م</strong></div>
                                                                 {order.serviceFee > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>الخدمة (Service): <strong style={{ color: 'var(--text-main)' }}>{order.serviceFee} ج.م</strong></div>}
                                                                 <div style={{ color: 'var(--accent)', fontSize: '1.2rem', marginTop: '4px', fontWeight: '900' }}>الإجمالي (Total): {order.total} ج.م</div>
+                                                                {Number(order.paidNow) > 0 && (
+                                                                    <div style={{ color: '#10b981', fontSize: '1rem', fontWeight: 'bold' }}>المدفوع (Paid Now): {order.paidNow} ج.م</div>
+                                                                )}
+                                                                {Number(order.remainingAmount) > 0 && (
+                                                                    <div style={{ color: '#ef4444', fontSize: '1.1rem', fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.15)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>الباقي (Remaining): {order.remainingAmount} ج.م</div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </motion.div>

@@ -52,6 +52,8 @@ export const supabaseService = {
           deliveryFee: Number(row.delivery_fee) || 0,
           subtotal: Number(rawPayload.totals?.subtotal || 0),
           serviceFee: Number(row.service_fee || rawPayload.totals?.service_fee || 0),
+          paidNow: Number(row.paid_now || rawPayload.totals?.paid_now || rawPayload.payment?.paid_now || 0),
+          remainingAmount: Number(row.remaining_amount || rawPayload.totals?.remaining_amount || rawPayload.payment?.remaining_amount || 0),
           items: safeItems,
           itemsDescription: itemsDescription,
           paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',

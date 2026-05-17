@@ -57,6 +57,20 @@ const PilotManagement = () => {
   const [newPilotIdNumber, setNewPilotIdNumber] = useState('');
   const [newPilotMotor, setNewPilotMotor] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [revealedPilots, setRevealedPilots] = useState({});
+
+  const handleReveal = (pilotId) => {
+    if (revealedPilots[pilotId]) {
+      setRevealedPilots(prev => ({ ...prev, [pilotId]: false }));
+    } else {
+      const pass = prompt('أدخل كلمة المرور لعرض البيانات السرية:');
+      if (pass === '8080') {
+        setRevealedPilots(prev => ({ ...prev, [pilotId]: true }));
+      } else if (pass !== null) {
+        alert('كلمة المرور غير صحيحة');
+      }
+    }
+  };
 
   const handleToggleShift = (pilotId, currentStatus) => {
     const password = prompt(currentStatus === 'open'
@@ -194,8 +208,22 @@ const PilotManagement = () => {
 
             <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', gap: '8px' }}>
               <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الوردية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12}/> {pilot.shift || 'غير محدد'}</div></div>
-              <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الموتوسيكل</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberMotor || 'غير مسجل'}</div></div>
-              <div style={{ gridColumn: '1/-1' }}><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الهوية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberId || 'غير مسجل'}</div></div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => handleReveal(pilot.id)}
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-muted)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  {revealedPilots[pilot.id] ? 'إخفاء البيانات 🔒' : 'عرض البيانات السرية 🔑'}
+                </button>
+              </div>
+
+              {revealedPilots[pilot.id] && (
+                <>
+                  <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الموتوسيكل</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberMotor || 'غير مسجل'}</div></div>
+                  <div style={{ gridColumn: '1/-1' }}><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الهوية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberId || 'غير مسجل'}</div></div>
+                </>
+              )}
             </div>
 
             <button
