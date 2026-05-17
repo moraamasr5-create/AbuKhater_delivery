@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService } from '../services/supabaseService';
+import { printerService } from '../services/printerService';
 
 const AppContext = createContext();
 
@@ -376,17 +377,25 @@ export const AppProvider = ({ children }) => {
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
-  const confirmOrder = (orderId) => {
+  const confirmOrder = async (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status !== 'pending') return;
 
+    const updatedOrder = { ...order, status: 'waiting_driver', confirmedAt: getSafeISOTime() };
+
     setOrders(prev => prev.map(o =>
-      o.id === orderId
-        ? { ...o, status: 'waiting_driver', confirmedAt: getSafeISOTime() }
-        : o
+      o.id === orderId ? updatedOrder : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
     updateExternalOrderStatus(order.originalId || order.id, 'confirmed');
+
+    // 🖨️ طباعة الأوردر تلقائياً (بون المطبخ وبون الكاشير)
+    try {
+      await printerService.printKitchenReceipt(updatedOrder);
+      await printerService.printCashierReceipt(updatedOrder);
+    } catch (err) {
+      console.error('❌ فشل الطباعة التلقائية:', err);
+    }
   };
 
   // Step 2: Assign Driver (Locks Order, Ready to Print)

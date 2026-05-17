@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Check, X, AlertCircle, UserPlus, RotateCcw, Clock, Bike, RefreshCw, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion'; // 🪄 استيراد مكتبة التحريك لعمل الـ Live Dashboard
+import { motion, AnimatePresence } from 'framer-motion';
+import { printerService } from '../../services/printerService';
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
 
@@ -73,35 +74,19 @@ const OrderInbox = ({ onReedit }) => {
         return () => clearInterval(interval);
     }, [orders]); // Depend on orders to refresh
 
-    const handlePrint = (order, pilotName = 'Not Assigned') => {
-        const printWindow = window.open('', '_blank', 'width=400,height=600');
-        if (!printWindow) return;
-        const itemsHtml = order.items ? order.items.map(i => `<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold;"><span>${i.name}</span><span>x${i.count}</span></div>`).join('') : '';
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html dir="rtl">
-            <head><title>Kitchen Ticket #{order.originalId || order.id}</title>
-            <style>body { font-family: 'Courier New', monospace; padding: 20px; width: 80mm; margin: 0 auto; text-align: center; } .header { font-size: 32px; font-weight: 800; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; } .meta { font-size: 14px; margin-bottom: 15px; text-align: right; } .items { border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px; text-align: right; } .footer { font-size: 12px; font-weight: bold; margin-top: 20px; }</style>
-            </head>
-            <body>
-            <div class="header">#{order.originalId || order.id}</div>
-            <div class="meta">
-                <div>العميل: ${order.customerName}</div>
-                <div>التوقيت: ${new Date().toLocaleTimeString('ar-EG')}</div>
-                <div style="margin-top:5px; font-weight:bold; border:1px solid #000; padding:5px; text-align:center;">الطيار: ${pilotName}</div>
-            </div>
-            <div class="items">${itemsHtml || '<p>' + (order.itemsDescription || '') + '</p>'}</div>
-            <div class="footer">نسخة المطبخ (FINAL) - Delivery Logic</div>
-            <script>window.print();window.close();</script>
-            </body></html>`;
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+    const handlePrint = async (order, pilotName = 'Not Assigned') => {
+        try {
+            await printerService.printCashierReceipt(order, true);
+            await printerService.printKitchenReceipt(order, true);
+            alert('✅ تم إرسال أمر الطباعة الحرارية بنجاح');
+        } catch (err) {
+            console.error('❌ خطأ في الطباعة:', err);
+        }
     };
 
-    const handleAssignAndPrint = (orderId) => {
+    const handleAssignAndPrint = async (orderId) => {
         let pilotId = selectedPilot[orderId];
 
-        // If no manual selection, try to get the suggested pilot
         if (!pilotId) {
             const suggested = getSuggestedPilot();
             if (suggested) pilotId = suggested.id;
@@ -112,7 +97,6 @@ const OrderInbox = ({ onReedit }) => {
             return;
         }
 
-        // Validate pilot status
         const selectedPilotObj = pilots.find(p => p.id === pilotId);
         if (selectedPilotObj && selectedPilotObj.state === 'out') {
             alert('هذا الطيار في رحلة توصيل حالياً ولا يمكن إسناد طلب جديد له 🚫');
@@ -121,11 +105,17 @@ const OrderInbox = ({ onReedit }) => {
 
         assignPilot(orderId, pilotId);
 
-        // Find pilot name for print
         const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
-        // Need to pass order object, but state might not be updated yet. Use current order data + new pilot.
         const order = orders.find(o => o.id === orderId);
-        if (order) handlePrint({ ...order, pilotId }, pilotName);
+        if (order) {
+            const updatedOrder = { ...order, pilotId, pilotName };
+            try {
+                await printerService.printCashierReceipt(updatedOrder, true);
+                alert('✅ تم إسناد الطيار والطباعة بنجاح');
+            } catch (err) {
+                console.error(err);
+            }
+        }
     };
 
     if (!isShiftOpen) {
