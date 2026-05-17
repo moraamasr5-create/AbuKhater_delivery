@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { INITIAL_PILOTS } from '../db/pilots';
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService } from '../services/supabaseService';
 
@@ -58,30 +57,8 @@ export const AppProvider = ({ children }) => {
     } catch { return []; }
   });
 
-  const [reservations, setReservations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_reservations');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  const [pilots, setPilots] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_pilots');
-      if (saved && saved !== 'undefined') {
-        const parsed = JSON.parse(saved);
-        // 🔄 مزامنة البيانات: إضافة الورديات لأي طيار قديم لا يملكها بناءً على INITIAL_PILOTS
-        return parsed.map(p => {
-          const initial = INITIAL_PILOTS.find(ip => ip.id === p.id);
-          return {
-            ...p,
-            shift: p.shift || (initial ? initial.shift : '8:00A - 6:00P') // قيمة افتراضية لو مش موجود
-          };
-        });
-      }
-      return INITIAL_PILOTS;
-    } catch { return INITIAL_PILOTS; }
-  });
+  const [reservations, setReservations] = useState([]);
+  const [pilots, setPilots] = useState([]);
 
   const [currentShift, setCurrentShift] = useState(() => {
     try {
@@ -143,16 +120,25 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(timer);
   }, [currentShift]);
 
-  // 🔥 3. Real-time Dashboard بدون Refresh (Live System)
-  // جلب الطلبات النشطة والجديدة من Supabase مباشرة
+  // 🔥 3. Real-time Dashboard (Supabase Live System)
   const retryRef = useRef(0);
 
   useEffect(() => {
     if (currentShift?.status !== 'open' || !API_CONFIG.AUTO_REFRESH) return;
 
-    const fetchOrdersLoop = async () => {
+    let ordersSub, pilotsSub, resSub;
+
+    const fetchInitialData = async () => {
       try {
-        const fetchedOrders = await supabaseService.fetchOrders();
+        const [fetchedOrders, fetchedPilots, fetchedRes] = await Promise.all([
+          supabaseService.fetchOrders(),
+          supabaseService.fetchDeliveryDrivers(),
+          supabaseService.fetchReservations()
+        ]);
+
+        if (fetchedPilots) setPilots(fetchedPilots);
+        if (fetchedRes) setReservations(fetchedRes);
+
         if (fetchedOrders && fetchedOrders.length > 0) {
           setOrders(prev => {
             const newOrders = fetchedOrders.filter(fo => !prev.some(o => (o.originalId || o.id) === fo.originalId));
@@ -161,28 +147,38 @@ export const AppProvider = ({ children }) => {
               logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrders.length} new orders`, 'System');
               return [...newOrders, ...prev];
             }
-            return prev;
+            return fetchedOrders; // Re-sync existing state with fresh DB data
           });
         }
-        retryRef.current = 0;
       } catch (err) {
-        console.error('📡 Supabase Polling Error:', err);
-        retryRef.current += 1;
-        if (retryRef.current >= 5) {
-          console.warn('❌ Poll cycle failed 5 times.');
-          retryRef.current = 0;
-        }
+        console.error('📡 Supabase Fetch Error:', err);
       }
     };
 
-    // سرعة التحديث: فحص دوري خفيف كل 5 ثواني
-    const nextInterval = retryRef.current > 0 ? 10000 : 5000;
-    const pollTimer = setInterval(fetchOrdersLoop, nextInterval);
+    fetchInitialData();
 
-    // الجلب الأولي عند فتح الوردية
-    fetchOrdersLoop();
+    // 🚀 Subscribing to Realtime Database Changes
+    ordersSub = supabaseService.subscribeToOrders(() => {
+      fetchInitialData(); // Re-fetch all data gently on change
+    });
 
-    return () => clearInterval(pollTimer);
+    pilotsSub = supabaseService.subscribeToDrivers(() => {
+      supabaseService.fetchDeliveryDrivers().then(setPilots);
+    });
+
+    resSub = supabaseService.subscribeToReservations(() => {
+      supabaseService.fetchReservations().then(setReservations);
+    });
+
+    // Fallback polling just in case WebSocket drops
+    const pollTimer = setInterval(fetchInitialData, 30000);
+
+    return () => {
+      clearInterval(pollTimer);
+      if (ordersSub) ordersSub.unsubscribe();
+      if (pilotsSub) pilotsSub.unsubscribe();
+      if (resSub) resSub.unsubscribe();
+    };
   }, [currentShift]);
 
   const syncExternalOrders = async () => {
@@ -477,39 +473,45 @@ export const AppProvider = ({ children }) => {
     updateExternalOrderStatus(order.originalId || order.id, 'failed_delivery');
   };
 
-  const togglePilotShift = (pilotId) => {
-    setPilots(prev => prev.map(pilot => {
-      if (pilot.id === pilotId) {
-        const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
+  const togglePilotShift = async (pilotId) => {
+    const pilot = pilots.find(p => p.id === pilotId);
+    if (!pilot) return;
 
-        if (newStatus === 'open' && pilot.shiftUsed) {
-          alert('⚠️ هذا الطيار قام بفتح وردية مسبقاً في هذا اليوم. لا يمكن فتحه مرة أخرى.');
-          return pilot;
-        }
+    const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
 
+    if (newStatus === 'open' && pilot.shiftUsed) {
+      alert('⚠️ هذا الطيار قام بفتح وردية مسبقاً في هذا اليوم. لا يمكن فتحه مرة أخرى.');
+      return;
+    }
+
+    // Call Supabase to update status (boolean)
+    await supabaseService.updateDriverStatus(pilotId, newStatus === 'open');
+
+    // Optimistically update UI
+    setPilots(prev => prev.map(p => {
+      if (p.id === pilotId) {
         const now = getNormalizedNow();
         let sessionMinutes = 0;
-        if (newStatus === 'closed' && pilot.lastOpenedAt) {
-          sessionMinutes = calculateDelayMinutes(pilot.lastOpenedAt);
+        if (newStatus === 'closed' && p.lastOpenedAt) {
+          sessionMinutes = calculateDelayMinutes(p.lastOpenedAt);
         }
 
-        // When opening shift, set as available and queue time = now
         const updates = newStatus === 'open'
           ? { state: 'available', lastReturnTime: getSafeISOTime(), lastOpenedAt: getSafeISOTime() }
           : {
             state: 'off',
             lastOpenedAt: null,
             shiftUsed: true,
-            totalMinutes: (pilot.totalMinutes || 0) + sessionMinutes
+            totalMinutes: (p.totalMinutes || 0) + sessionMinutes
           };
 
         return {
-          ...pilot,
+          ...p,
           shiftStatus: newStatus,
           ...updates
         };
       }
-      return pilot;
+      return p;
     }));
   };
 
@@ -613,17 +615,26 @@ export const AppProvider = ({ children }) => {
     };
   };
 
-  const addReservation = (resData) => {
-    const newRes = {
-      id: generateSafeId('RES'),
-      timestamp: getSafeISOTime(),
-      status: 'pending',
-      deposit: 50, // Standard deposit from docs
-      ...resData
-    };
-    setReservations(prev => [newRes, ...prev]);
-    logAction('RES_CREATE', `Reservation for ${resData.customerName}`, 'Cashier');
-    sendToN8N(newRes, 'RESERVATION_CREATE');
+  const addReservation = async (resData) => {
+    // Save to Supabase
+    const savedData = await supabaseService.createReservation(resData);
+    
+    if (savedData && savedData.length > 0) {
+      const row = savedData[0];
+      const newRes = {
+        supabaseId: row.id,
+        id: `RES-${String(row.id).slice(0, 6)}`,
+        timestamp: row.created_at || getSafeISOTime(),
+        status: 'pending',
+        deposit: resData.deposit || 50,
+        ...resData
+      };
+      // Optimistic update
+      setReservations(prev => [newRes, ...prev]);
+      logAction('RES_CREATE', `Reservation for ${resData.customerName}`, 'Cashier');
+    } else {
+      alert('حدث خطأ أثناء حفظ الحجز.');
+    }
   };
 
   const confirmReservation = (id, refNum, paymentProof = null) => {
@@ -635,31 +646,40 @@ export const AppProvider = ({ children }) => {
     sendToN8N({ ...existing, status: 'confirmed', refNumber: refNum, paymentProof }, 'RESERVATION_CONFIRM');
   };
 
-  const deleteReservation = (id) => {
+  const deleteReservation = async (id) => {
+    await supabaseService.deleteReservation(id);
     setReservations(prev => prev.filter(r => r.id !== id));
     logAction('RES_DELETE', `Reservation ${id} deleted`, 'Supervisor');
   };
 
-  const addNewPilot = (name, phone, shift) => {
+  const addNewPilot = async (name, phone, shift) => {
     if (pilots.some(p => p.name === name)) {
       alert('اسم الطيار موجود بالفعل!');
       return;
     }
-    const newPilot = {
-      id: `p-${Date.now()}`,
-      name,
-      phone,
-      shift: shift || 'غير محدد',
-      state: 'available',
-      shiftStatus: 'closed',
-      vehicle: 'موتوسيكل',
-      ordersCount: 0,
-      totalMinutes: 0,
-      balance: 0,
-      shiftUsed: false
-    };
-    setPilots(prev => [...prev, newPilot]);
-    logAction('PILOT_ADD', `New pilot added: ${name}`, 'Manager');
+    
+    const savedData = await supabaseService.addDeliveryDriver({ name, phone, shift });
+    
+    if (savedData && savedData.length > 0) {
+      const row = savedData[0];
+      const newPilot = {
+        id: row.id,
+        name,
+        phone,
+        shift: shift || 'غير محدد',
+        state: 'available',
+        shiftStatus: 'closed',
+        vehicle: 'موتوسيكل',
+        ordersCount: 0,
+        totalMinutes: 0,
+        balance: 0,
+        shiftUsed: false
+      };
+      setPilots(prev => [...prev, newPilot]);
+      logAction('PILOT_ADD', `New pilot added: ${name}`, 'Manager');
+    } else {
+      alert('حدث خطأ أثناء إضافة الطيار.');
+    }
   };
 
   return (

@@ -136,7 +136,79 @@ export const supabaseService = {
     }
   },
 
-  // 5. حفظ تقرير الوردية (Shift Report)
+  // 5. جلب بيانات الطيارين (Drivers)
+  async fetchDeliveryDrivers() {
+    try {
+      const { data, error } = await supabase
+        .from('delivery')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('❌ Supabase fetchDeliveryDrivers error:', error);
+        return [];
+      }
+
+      if (!data) return [];
+
+      return data.map(row => ({
+        id: row.id,
+        name: row.name || 'طيار غير معروف',
+        phone: row.phone || 'غير مسجل',
+        numberMotor: row.number_motor || '',
+        numberId: row.number_id || null,
+        startShift: row.start_shift || null,
+        endShift: row.end_shif || null,
+        status: row.status ? 'online' : 'offline',
+        idDelivery: row.id_delivery || null,
+        shift: row.start_shift && row.end_shif ? `${row.start_shift} - ${row.end_shif}` : 'بدون شيفت',
+        zone: row.id_delivery === 1 ? 'مطرية' : row.id_delivery === 2 ? 'عين شمس' : 'عام',
+        shiftStatus: row.status ? 'open' : 'closed' // For AppContext compatibility
+      }));
+    } catch (err) {
+      console.error('❌ Supabase fetchDeliveryDrivers exception:', err);
+      return [];
+    }
+  },
+
+  async addDeliveryDriver(driverData) {
+    try {
+      const { data, error } = await supabase
+        .from('delivery')
+        .insert([{
+          name: driverData.name,
+          phone: driverData.phone,
+          start_shift: driverData.shift.split('-')[0]?.trim() || null,
+          end_shif: driverData.shift.split('-')[1]?.trim() || null,
+          status: false
+        }])
+        .select();
+
+      if (error) console.error('❌ Supabase addDeliveryDriver error:', error);
+      return data;
+    } catch (err) {
+      console.error('❌ Supabase addDeliveryDriver exception:', err);
+      return null;
+    }
+  },
+
+  // 6. تحديث حالة الطيار (متصل/غير متصل)
+  async updateDriverStatus(id, isOnline) {
+    try {
+      const { error } = await supabase
+        .from('delivery')
+        .update({ status: isOnline })
+        .eq('id', id);
+
+      if (error) {
+        console.error('❌ Supabase updateDriverStatus error:', error);
+      }
+    } catch (err) {
+      console.error('❌ Supabase updateDriverStatus exception:', err);
+    }
+  },
+
+  // 7. حفظ تقرير الوردية (Shift Report)
   async saveShiftReport(reportData) {
     try {
       const { error } = await supabase
@@ -157,5 +229,74 @@ export const supabaseService = {
     } catch (err) {
       console.error('❌ Supabase saveShiftReport exception:', err);
     }
+  },
+
+  async createReservation(resData) {
+    try {
+      const { data, error } = await supabase
+        .from('reservations')
+        .insert([{
+          customer_name: resData.customerName,
+          customer_phone: resData.phone,
+          reservation_date: resData.date,
+          reservation_time: resData.time,
+          guests_count: resData.guests,
+          location_type: resData.type || resData.locationType,
+          notes: resData.notes,
+          status: 'pending'
+        }])
+        .select();
+
+      if (error) console.error('❌ Supabase createReservation error:', error);
+      return data;
+    } catch (err) {
+      console.error('❌ Supabase createReservation exception:', err);
+      return null;
+    }
+  },
+
+  async deleteReservation(id) {
+    try {
+      const cleanId = String(id).replace('RES-', '');
+      const { error } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('id', cleanId);
+
+      if (error) console.error('❌ Supabase deleteReservation error:', error);
+    } catch (err) {
+      console.error('❌ Supabase deleteReservation exception:', err);
+    }
+  },
+
+  // 8. Realtime Subscriptions
+  subscribeToOrders(callback) {
+    return supabase
+      .channel('custom-orders-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+        console.log('🔄 Realtime Order Update:', payload);
+        callback(payload);
+      })
+      .subscribe();
+  },
+
+  subscribeToReservations(callback) {
+    return supabase
+      .channel('custom-reservations-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
+        console.log('🔄 Realtime Reservation Update:', payload);
+        callback(payload);
+      })
+      .subscribe();
+  },
+
+  subscribeToDrivers(callback) {
+    return supabase
+      .channel('custom-drivers-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery' }, payload => {
+        console.log('🔄 Realtime Driver Update:', payload);
+        callback(payload);
+      })
+      .subscribe();
   }
 };
