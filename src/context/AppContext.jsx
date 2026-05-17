@@ -29,9 +29,9 @@ const sendToN8N = async (payload, type) => {
 /**
  * 🔴 الدالة دي بتبعت تحديث "حالة الطلب" مباشرة لـ Supabase
  */
-const updateExternalOrderStatus = async (orderId, newStatus) => {
+const updateExternalOrderStatus = async (orderId, newStatus, reason = null) => {
   try {
-    await supabaseService.updateOrderStatus(orderId, newStatus);
+    await supabaseService.updateOrderStatus(orderId, newStatus, reason);
   } catch (e) {
     console.error('External Status Update Exception:', e);
   }
@@ -372,21 +372,28 @@ export const AppProvider = ({ children }) => {
     ));
     logAction('ORDER_CANCEL', `Order #${orderId} cancelled. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
-    updateExternalOrderStatus(order.originalId || order.id, 'cancelled');
+    updateExternalOrderStatus(order.originalId || order.id, 'cancelled', reason);
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
-  const confirmOrder = (orderId) => {
+  const confirmOrder = async (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status !== 'pending') return;
 
+    const updatedOrder = { ...order, status: 'waiting_driver', confirmedAt: getSafeISOTime() };
+
     setOrders(prev => prev.map(o =>
-      o.id === orderId
-        ? { ...o, status: 'waiting_driver', confirmedAt: getSafeISOTime() }
-        : o
+      o.id === orderId ? updatedOrder : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
     updateExternalOrderStatus(order.originalId || order.id, 'confirmed');
+
+    try {
+      await printerService.printKitchenReceipt(updatedOrder);
+      await printerService.printCashierReceipt(updatedOrder);
+    } catch (err) {
+      console.error('❌ فشل الطباعة التلقائية:', err);
+    }
   };
 
   // Step 2: Assign Driver (Locks Order, Ready to Print)
@@ -470,7 +477,7 @@ export const AppProvider = ({ children }) => {
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason }, 'ORDER_FAIL');
-    updateExternalOrderStatus(order.originalId || order.id, 'failed_delivery');
+    updateExternalOrderStatus(order.originalId || order.id, 'failed_delivery', reason);
   };
 
   const togglePilotShift = async (pilotId) => {

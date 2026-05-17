@@ -39,6 +39,16 @@ export const supabaseService = {
           ? safeItems.map(i => `${i.count}x ${i.name}`).join(', ')
           : "طلب خارجي (بدون تفاصيل)";
 
+        let mappedStatus = 'pending';
+        const rawStatus = String(row.status || '').trim();
+        if (rawStatus === 'تم التأكيد' || rawStatus === 'waiting_driver' || rawStatus === 'confirmed') mappedStatus = 'waiting_driver';
+        else if (rawStatus.includes('ملغي') || rawStatus === 'cancelled') mappedStatus = 'cancelled';
+        else if (rawStatus === 'تم الإسناد للطيار' || rawStatus === 'driver_assigned') mappedStatus = 'driver_assigned';
+        else if (rawStatus === 'في الطريق للتسليم' || rawStatus === 'active' || rawStatus === 'out_for_delivery') mappedStatus = 'active';
+        else if (rawStatus === 'تم التسليم' || rawStatus === 'completed') mappedStatus = 'completed';
+        else if (rawStatus.includes('فشل التوصيل') || rawStatus === 'failed_delivery') mappedStatus = 'failed_delivery';
+        else if (rawStatus === 'pending' || rawStatus === 'pending_timer') mappedStatus = rawStatus;
+
         return {
           supabaseId: row.id,
           id: `EXT-${orderId}`,
@@ -58,7 +68,8 @@ export const supabaseService = {
           itemsDescription: itemsDescription,
           paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',
           paymentScreenshot: row.payment_screenshot || rawPayload.payment?.screenshot || null,
-          status: row.status || 'pending',
+          status: mappedStatus,
+          displayStatus: rawStatus || 'pending',
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
           source: 'online',
           lat: row.latitude || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
@@ -73,20 +84,35 @@ export const supabaseService = {
   },
 
   // 2. تحديث حالة الطلب
-  async updateOrderStatus(orderId, newStatus) {
+  async updateOrderStatus(orderId, newStatus, reason = null) {
     try {
       const cleanId = String(orderId).replace('EXT-', '');
+      let dbStatus = newStatus;
+
+      if (newStatus === 'confirmed' || newStatus === 'waiting_driver') {
+        dbStatus = 'تم التأكيد';
+      } else if (newStatus === 'cancelled') {
+        dbStatus = reason ? `ملغي (${reason})` : 'ملغي';
+      } else if (newStatus === 'driver_assigned') {
+        dbStatus = 'تم الإسناد للطيار';
+      } else if (newStatus === 'out_for_delivery' || newStatus === 'active') {
+        dbStatus = 'في الطريق للتسليم';
+      } else if (newStatus === 'completed') {
+        dbStatus = 'تم التسليم';
+      } else if (newStatus === 'failed_delivery') {
+        dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
+      }
       
       // نبحث عن الطلب سواء بـ UUID أو بـ order_id المخزن في JSON
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ status: dbStatus })
         .or(`id.eq.${cleanId},raw_payload->>order_id.eq.${cleanId}`);
 
       if (error) {
         console.error(`❌ Supabase updateOrderStatus error for ${cleanId}:`, error);
       } else {
-        console.log(`✅ Supabase status updated to ${newStatus} for order ${cleanId}`);
+        console.log(`✅ Supabase status updated to ${dbStatus} for order ${cleanId}`);
       }
     } catch (err) {
       console.error('❌ Supabase updateOrderStatus exception:', err);
