@@ -173,13 +173,16 @@ export const supabaseService = {
 
   async addDeliveryDriver(driverData) {
     try {
+      const shiftStr = driverData.shift || '';
+      const parts = shiftStr.split('-');
+      
       const { data, error } = await supabase
         .from('delivery')
         .insert([{
           name: driverData.name,
           phone: driverData.phone,
-          start_shift: driverData.shift.split('-')[0]?.trim() || null,
-          end_shif: driverData.shift.split('-')[1]?.trim() || null,
+          start_shift: parts[0]?.trim() || null,
+          end_shif: parts[1]?.trim() || null,
           status: false
         }])
         .select();
