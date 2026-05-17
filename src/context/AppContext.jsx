@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService } from '../services/supabaseService';
-import { printerService } from '../services/printerService';
 
 const AppContext = createContext();
 
@@ -144,7 +143,7 @@ export const AppProvider = ({ children }) => {
           setOrders(prev => {
             const newOrders = fetchedOrders.filter(fo => !prev.some(o => (o.originalId || o.id) === fo.originalId));
             if (newOrders.length > 0) {
-              new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => {});
+              new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => { });
               logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrders.length} new orders`, 'System');
               return [...newOrders, ...prev];
             }
@@ -377,25 +376,17 @@ export const AppProvider = ({ children }) => {
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
-  const confirmOrder = async (orderId) => {
+  const confirmOrder = (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status !== 'pending') return;
 
-    const updatedOrder = { ...order, status: 'waiting_driver', confirmedAt: getSafeISOTime() };
-
     setOrders(prev => prev.map(o =>
-      o.id === orderId ? updatedOrder : o
+      o.id === orderId
+        ? { ...o, status: 'waiting_driver', confirmedAt: getSafeISOTime() }
+        : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
     updateExternalOrderStatus(order.originalId || order.id, 'confirmed');
-
-    // 🖨️ طباعة الأوردر تلقائياً (بون المطبخ وبون الكاشير)
-    try {
-      await printerService.printKitchenReceipt(updatedOrder);
-      await printerService.printCashierReceipt(updatedOrder);
-    } catch (err) {
-      console.error('❌ فشل الطباعة التلقائية:', err);
-    }
   };
 
   // Step 2: Assign Driver (Locks Order, Ready to Print)
@@ -627,7 +618,7 @@ export const AppProvider = ({ children }) => {
   const addReservation = async (resData) => {
     // Save to Supabase
     const savedData = await supabaseService.createReservation(resData);
-    
+
     if (savedData && savedData.length > 0) {
       const row = savedData[0];
       const newRes = {
@@ -663,13 +654,13 @@ export const AppProvider = ({ children }) => {
 
   const addNewPilot = async (pilotData) => {
     const { name, phone, shift, number_id, number_motor } = pilotData;
-    
+
     if (pilots.some(p => p.name === name)) {
       return { success: false, error: 'اسم الطيار موجود بالفعل!' };
     }
-    
+
     const savedData = await supabaseService.addDeliveryDriver(pilotData);
-    
+
     if (savedData && savedData.length > 0) {
       const row = savedData[0];
       const newPilot = {
