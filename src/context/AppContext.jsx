@@ -372,7 +372,7 @@ export const AppProvider = ({ children }) => {
     ));
     logAction('ORDER_CANCEL', `Order #${orderId} cancelled. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
-    updateExternalOrderStatus(order.originalId || order.id, 'cancelled', reason);
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'cancelled', reason);
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
@@ -386,7 +386,7 @@ export const AppProvider = ({ children }) => {
       o.id === orderId ? updatedOrder : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
-    updateExternalOrderStatus(order.originalId || order.id, 'confirmed');
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'confirmed');
 
     try {
       await printerService.printKitchenReceipt(updatedOrder);
@@ -408,7 +408,7 @@ export const AppProvider = ({ children }) => {
     ));
     const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
-    updateExternalOrderStatus(order.originalId || order.id, 'driver_assigned');
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'driver_assigned');
   };
 
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
@@ -430,7 +430,7 @@ export const AppProvider = ({ children }) => {
     ));
 
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
-    updateExternalOrderStatus(order.originalId || order.id, 'out_for_delivery');
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'out_for_delivery');
   };
 
   // Step 4: Complete (Pilot Returns -> Status Available + Queue Update)
@@ -454,7 +454,7 @@ export const AppProvider = ({ children }) => {
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed' }, 'ORDER_COMPLETE');
-    updateExternalOrderStatus(order.originalId || order.id, 'completed');
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'completed');
   };
 
   const failDelivery = (orderId, reason) => {
@@ -477,7 +477,7 @@ export const AppProvider = ({ children }) => {
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason }, 'ORDER_FAIL');
-    updateExternalOrderStatus(order.originalId || order.id, 'failed_delivery', reason);
+    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'failed_delivery', reason);
   };
 
   const togglePilotShift = async (pilotId) => {

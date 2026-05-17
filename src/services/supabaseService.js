@@ -41,11 +41,11 @@ export const supabaseService = {
 
         let mappedStatus = 'pending';
         const rawStatus = String(row.status || '').trim();
-        if (rawStatus === 'تم التأكيد' || rawStatus === 'waiting_driver' || rawStatus === 'confirmed') mappedStatus = 'waiting_driver';
+        if (rawStatus === 'في التحضير' || rawStatus === 'تم التأكيد' || rawStatus === 'waiting_driver' || rawStatus === 'confirmed') mappedStatus = 'waiting_driver';
         else if (rawStatus.includes('ملغي') || rawStatus === 'cancelled') mappedStatus = 'cancelled';
         else if (rawStatus === 'تم الإسناد للطيار' || rawStatus === 'driver_assigned') mappedStatus = 'driver_assigned';
         else if (rawStatus === 'في الطريق للتسليم' || rawStatus === 'active' || rawStatus === 'out_for_delivery') mappedStatus = 'active';
-        else if (rawStatus === 'تم التسليم' || rawStatus === 'completed') mappedStatus = 'completed';
+        else if (rawStatus === 'تم التوصيل' || rawStatus === 'تم التسليم' || rawStatus === 'completed') mappedStatus = 'completed';
         else if (rawStatus.includes('فشل التوصيل') || rawStatus === 'failed_delivery') mappedStatus = 'failed_delivery';
         else if (rawStatus === 'pending' || rawStatus === 'pending_timer') mappedStatus = rawStatus;
 
@@ -90,7 +90,7 @@ export const supabaseService = {
       let dbStatus = newStatus;
 
       if (newStatus === 'confirmed' || newStatus === 'waiting_driver') {
-        dbStatus = 'تم التأكيد';
+        dbStatus = 'في التحضير';
       } else if (newStatus === 'cancelled') {
         dbStatus = reason ? `ملغي (${reason})` : 'ملغي';
       } else if (newStatus === 'driver_assigned') {
@@ -98,16 +98,22 @@ export const supabaseService = {
       } else if (newStatus === 'out_for_delivery' || newStatus === 'active') {
         dbStatus = 'في الطريق للتسليم';
       } else if (newStatus === 'completed') {
-        dbStatus = 'تم التسليم';
+        dbStatus = 'تم التوصيل';
       } else if (newStatus === 'failed_delivery') {
         dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
       }
       
-      // نبحث عن الطلب سواء بـ UUID أو بـ order_id المخزن في JSON
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: dbStatus })
-        .or(`id.eq.${cleanId},raw_payload->>order_id.eq.${cleanId}`);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+      let query = supabase.from('orders').update({ status: dbStatus });
+
+      if (isUuid) {
+        query = query.eq('id', cleanId);
+      } else {
+        const numStr = cleanId.startsWith('#') ? cleanId : `#${cleanId}`;
+        query = query.eq('raw_payload->>order_id', numStr);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error(`❌ Supabase updateOrderStatus error for ${cleanId}:`, error);
