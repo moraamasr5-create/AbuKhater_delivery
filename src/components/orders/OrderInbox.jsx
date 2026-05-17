@@ -171,19 +171,19 @@ const OrderInbox = ({ onReedit }) => {
                             const isInGracePeriod = order.status === 'pending_timer';
                             const timeLeft = auditTimers[order.id] || 0;
                             const suggestedPilot = order.status === 'waiting_driver' ? getSuggestedPilot() : null;
-                            const isOnline = !!order.customer;
+                            const isOnline = order.source === 'online' || order.type === 'online' || !!order.customer;
 
                             const normalized = isOnline ? {
-                                name: order.customer?.name || "عميل غير معروف",
-                                phone: order.customer?.phone_primary || order.customer?.phone || order.customer?.phone_final || "غير متوفر",
-                                phone2: order.customer?.phone && order.customer?.phone !== order.customer?.phone_primary ? order.customer.phone : null,
-                                address: order.customer?.address || "No Address",
-                                deliveryFee: order.totals?.delivery_fee || 0,
-                                total: order.totals?.total || order.payment?.amount_total || 0,
-                                paymentMethod: order.payment?.method || "unknown",
-                                lat: order.lat || order.lan || 30.0444, // Default to Cairo for MVP WOW effect
-                                lng: order.lng || order.len || 31.2357, // Default to Cairo for MVP WOW effect
-                                screenshot: order.screenshot
+                                name: order.customerName || order.customer?.name || "عميل غير معروف",
+                                phone: order.phone || order.customer?.phone_primary || "غير متوفر",
+                                phone2: order.phone2 || order.customer?.phone2 || null,
+                                address: order.area || order.customer?.address || "No Address",
+                                deliveryFee: order.deliveryFee || order.totals?.delivery_fee || 0,
+                                total: order.total || order.payment?.amount_total || 0,
+                                paymentMethod: order.paymentMethod || order.payment?.method || "unknown",
+                                lat: order.lat || order.lan || null,
+                                lng: order.lng || order.len || null,
+                                screenshot: order.paymentScreenshot || order.screenshot || order.paymentProof || null
                             } : null;
 
                             if (isOnline && normalized.screenshot?.includes("drive.google.com")) {
@@ -409,9 +409,9 @@ const OrderInbox = ({ onReedit }) => {
                                                     })()}
 
                                                     {/* 🖼️ Mini Preview Thumbnail */}
-                                                    {(order.screenshot || order.image || order.attachment || order.paymentProof) && (
+                                                    {(order.paymentScreenshot || order.screenshot || order.image || order.attachment || order.paymentProof) && (
                                                         <div
-                                                            onClick={() => setPreviewImage(order.screenshot || order.image || order.attachment || order.paymentProof)}
+                                                            onClick={() => setPreviewImage(order.paymentScreenshot || order.screenshot || order.image || order.attachment || order.paymentProof)}
                                                             className="hover-scale"
                                                             style={{
                                                                 width: '45px',
@@ -424,7 +424,7 @@ const OrderInbox = ({ onReedit }) => {
                                                             title="عرض صورة التحويل"
                                                         >
                                                             <img
-                                                                src={order.screenshot || order.image || order.attachment || order.paymentProof}
+                                                                src={order.paymentScreenshot || order.screenshot || order.image || order.attachment || order.paymentProof}
                                                                 alt="preview"
                                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                             />
