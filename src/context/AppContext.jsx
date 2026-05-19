@@ -46,16 +46,29 @@ const mergePilots = (prevPilots, fetchedPilots) => {
 
 export const AppProvider = ({ children }) => {
   // 🔴 نظام الأدوار (Role System)
-  // بنحدد هنا إذا كان المستخدم 'admin' (مدير) أو 'driver' (طيار)
-  // ده اللي بيتحكم في ظهور الأزرار والبيانات الحساسة في السيستم
+  // بنحدد هنا إذا كان المستخدم 'admin' (مدير) أو 'casher' (كاشير) أو '' (غير مسجل دخول)
   const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem('user_role') || 'admin';
+    return sessionStorage.getItem('b_delivery_session_user') || '';
   });
 
-  // حفظ الدور في المتصفح عشان ميرجعش أدمن لو عملنا Refresh
+  // حفظ الدور في المتصفح ودور الجلسة
   useEffect(() => {
-    localStorage.setItem('user_role', userRole);
+    if (userRole) {
+      sessionStorage.setItem('b_delivery_session_user', userRole);
+    } else {
+      sessionStorage.removeItem('b_delivery_session_user');
+    }
   }, [userRole]);
+
+  // تهيئة كلمات المرور الافتراضية إذا لم تكن موجودة
+  useEffect(() => {
+    if (!localStorage.getItem('b_delivery_password_admin')) {
+      localStorage.setItem('b_delivery_password_admin', '8080');
+    }
+    if (!localStorage.getItem('b_delivery_password_casher')) {
+      localStorage.setItem('b_delivery_password_casher', '8080');
+    }
+  }, []);
 
   const [orders, setOrders] = useState(() => {
     try {

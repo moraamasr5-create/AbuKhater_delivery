@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
+import Login from './components/auth/Login';
 import { useApp } from './context/AppContext';
-import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert } from 'lucide-react';
+import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound } from 'lucide-react';
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
 
@@ -1226,17 +1227,134 @@ const ExtraTripForm = ({ onClose, initialData }) => {
   );
 };
 
+const SecurityModal = ({ onClose }) => {
+  const [targetUser, setTargetUser] = useState('admin');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    // Validation: PIN should be numeric only
+    if (!/^\d+$/.test(newPin)) {
+      setError('⚠️ يجب أن تتكون كلمة المرور من أرقام فقط!');
+      return;
+    }
+
+    if (newPin.length < 4) {
+      setError('⚠️ يجب أن لا تقل كلمة المرور عن 4 أرقام!');
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      setError('⚠️ كلمتا المرور غير متطابقتين!');
+      return;
+    }
+
+    // Save to localStorage
+    const storageKey = `b_delivery_password_${targetUser}`;
+    localStorage.setItem(storageKey, newPin);
+    setSuccess(`✅ تم تغيير كلمة مرور ${targetUser === 'admin' ? 'المدير' : 'الكاشير'} بنجاح!`);
+    setNewPin('');
+    setConfirmPin('');
+    setTimeout(() => {
+      onClose();
+    }, 1500);
+  };
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 100000 }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '24px', position: 'relative', border: '1px solid var(--border)' }}>
+        <h3 className="flex" style={{ fontSize: '1.3rem', margin: '0 0 16px 0', borderBottom: '1px solid var(--border)', paddingBottom: '12px', color: 'white' }}>
+          <KeyRound size={20} color="var(--accent)" /> إعدادات الأمان وتغيير كلمات المرور
+        </h3>
+        
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* User selector */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>المستخدم المراد تغيير كلمة سره:</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ flex: 1, background: targetUser === 'admin' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'admin' ? 'none' : '1px solid var(--border)', justifyContent: 'center' }}
+                onClick={() => { setTargetUser('admin'); setError(''); setSuccess(''); }}
+              >
+                المدير (Admin)
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ flex: 1, background: targetUser === 'casher' ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'casher' ? 'none' : '1px solid var(--border)', justifyContent: 'center' }}
+                onClick={() => { setTargetUser('casher'); setError(''); setSuccess(''); }}
+              >
+                الكاشير (Casher)
+              </button>
+            </div>
+          </div>
+
+          {/* New PIN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>كلمة المرور الجديدة (أرقام فقط):</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="glass-card"
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1.1rem', letterSpacing: '2px', textAlign: 'center' }}
+              value={newPin}
+              onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••"
+              required
+            />
+          </div>
+
+          {/* Confirm PIN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>تأكيد كلمة المرور الجديدة:</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="glass-card"
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1.1rem', letterSpacing: '2px', textAlign: 'center' }}
+              value={confirmPin}
+              onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••"
+              required
+            />
+          </div>
+
+          {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 'bold', textAlign: 'center' }}>{error}</div>}
+          {success && <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 'bold', textAlign: 'center' }}>{success}</div>}
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+            <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>حفظ التعديل</button>
+            <button type="button" onClick={onClose} style={{ flex: 0.5, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '8px' }}>إلغاء</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeModal, setActiveModal] = useState('none');
   const [reeditData, setReeditData] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { isShiftOpen, deleteOrder, userRole } = useApp();
+  const { isShiftOpen, deleteOrder, userRole, setUserRole } = useApp();
 
-  // 🟢 حماية لضمان أن الطيار مبيشوفش غير صندوق الوارد
+  // 🟢 حماية لضمان الصلاحيات للأدوار المختلفة
   useEffect(() => {
     if (userRole === 'driver' && activeTab !== 'inbox') {
       setActiveTab('inbox');
+    } else if (userRole === 'casher' && activeTab === 'reports') {
+      setActiveTab('dashboard');
     }
   }, [userRole, activeTab]);
 
@@ -1320,6 +1438,10 @@ function App() {
     };
   }, []);
 
+  if (!userRole) {
+    return <Login onLoginSuccess={(role) => setActiveTab(role === 'admin' ? 'dashboard' : 'inbox')} />;
+  }
+
   return (
     <div className="layout" dir="rtl">
       {/* Mobile Menu Toggle */}
@@ -1338,11 +1460,12 @@ function App() {
         setActiveTab={setActiveTab}
         isSidebarOpen={isSidebarOpen}
         closeSidebar={closeSidebar}
+        onOpenSecurity={() => setActiveModal('security')}
       />
       <main className="main-content">
         <div className="app-container">
-          {/* 🔴 أزرار الإضافة - مسموحة للمدير فقط */}
-          {isShiftOpen && userRole === 'admin' && (
+          {/* 🔴 أزرار الإضافة - مسموحة للمدير والكاشير */}
+          {isShiftOpen && (userRole === 'admin' || userRole === 'casher') && (
             <div className="flex flex-wrap" style={{ marginBottom: '24px', gap: '12px' }}>
               <button
                 onClick={() => setActiveModal('manual')}
@@ -1376,13 +1499,14 @@ function App() {
           {activeModal === 'manual' && <ManualOrderForm onClose={handleCloseModal} initialData={reeditData} />}
           {activeModal === 'external' && <ExternalOrderForm onClose={handleCloseModal} initialData={reeditData} />}
           {activeModal === 'trip' && <ExtraTripForm onClose={handleCloseModal} initialData={reeditData} />}
+          {activeModal === 'security' && <SecurityModal onClose={handleCloseModal} />}
 
           <div style={{ position: 'relative' }}>
-            {/* 🔐 تأمين الصفحات - الأدمن بس هو اللي يفتح التقارير والطيارين والداشبورد */}
-            {activeTab === 'dashboard' && userRole === 'admin' && <DashboardView />}
+            {/* 🔐 تأمين الصفحات - الأدمن والكاشير */}
+            {activeTab === 'dashboard' && (userRole === 'admin' || userRole === 'casher') && <DashboardView />}
             {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
-            {activeTab === 'pilots' && userRole === 'admin' && <PilotManagement />}
-            {activeTab === 'reservations' && userRole === 'admin' && <ReservationView />}
+            {activeTab === 'pilots' && (userRole === 'admin' || userRole === 'casher') && <PilotManagement />}
+            {activeTab === 'reservations' && (userRole === 'admin' || userRole === 'casher') && <ReservationView />}
             {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
         </div>
