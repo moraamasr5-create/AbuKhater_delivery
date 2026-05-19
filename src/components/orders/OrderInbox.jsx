@@ -44,10 +44,10 @@ const OrderInbox = ({ onReedit }) => {
         }
     };
 
-    // 🔴 تصفية الطلبات المعروضة بناءً على نوع المستخدم (ادمن او طيار)
+    // 🔴 تصفية الطلبات المعروضة بناءً على نوع المستخدم (ادمن او كاشير او طيار)
     const inboxOrders = orders.filter(o => {
-        if (userRole === 'admin') {
-            // الادمن بيشوف الطلبات في مراحل التجهيز والانتظار
+        if (userRole === 'admin' || userRole === 'casher') {
+            // الادمن والكاشير بيشوفوا الطلبات في مراحل التجهيز والانتظار
             return ['pending', 'pending_timer', 'waiting_driver', 'driver_assigned'].includes(o.status);
         } else {
             // الطيار بيشوف بس الطلبات اللي اتسندت ليه أو اللي "في الطريق" للتسليم

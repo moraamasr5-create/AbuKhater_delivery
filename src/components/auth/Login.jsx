@@ -183,7 +183,8 @@ const Login = ({ onLoginSuccess }) => {
           justify-content: center;
           z-index: 99999;
           font-family: 'Outfit', 'Cairo', sans-serif;
-          overflow: hidden;
+          overflow-y: auto;
+          padding: 12px;
         }
 
         .login-bg-glow {
@@ -214,23 +215,23 @@ const Login = ({ onLoginSuccess }) => {
           position: relative;
           z-index: 2;
           width: 100%;
-          max-width: 400px;
-          padding: 32px 24px;
+          max-width: 360px;
+          padding: 24px 20px;
           background: rgba(17, 24, 39, 0.7);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 24px;
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
           backdrop-filter: blur(20px);
-          margin: 16px;
+          margin: auto;
         }
 
         .login-logo-container {
-          width: 70px;
-          height: 70px;
+          width: 60px;
+          height: 60px;
           margin: 0 auto;
           background: rgba(255, 255, 255, 0.03);
           border: 1.5px solid rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
+          border-radius: 16px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -245,8 +246,8 @@ const Login = ({ onLoginSuccess }) => {
 
         .login-user-select {
           display: flex;
-          gap: 12px;
-          margin-bottom: 24px;
+          gap: 10px;
+          margin-bottom: 20px;
         }
 
         .login-user-btn {
@@ -254,11 +255,11 @@ const Login = ({ onLoginSuccess }) => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 8px;
-          padding: 16px 8px;
+          gap: 6px;
+          padding: 12px 6px;
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
+          border-radius: 12px;
           color: var(--text-muted, #94a3b8);
           font-weight: bold;
           cursor: pointer;
@@ -268,7 +269,7 @@ const Login = ({ onLoginSuccess }) => {
         .login-user-btn:hover {
           background: rgba(255, 255, 255, 0.05);
           color: white;
-          transform: translateY(-2px);
+          transform: translateY(-1px);
         }
 
         .login-user-btn.active.admin {
@@ -288,11 +289,11 @@ const Login = ({ onLoginSuccess }) => {
         .login-pin-display {
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
-          padding: 16px;
+          border-radius: 12px;
+          padding: 12px;
           text-align: center;
-          margin-bottom: 24px;
-          min-height: 80px;
+          margin-bottom: 20px;
+          min-height: 70px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -302,13 +303,13 @@ const Login = ({ onLoginSuccess }) => {
         .login-dots-container {
           display: flex;
           justify-content: center;
-          gap: 16px;
-          height: 16px;
+          gap: 12px;
+          height: 12px;
         }
 
         .login-dot {
-          width: 14px;
-          height: 14px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.15);
@@ -324,24 +325,24 @@ const Login = ({ onLoginSuccess }) => {
         .login-error-msg {
           color: #ef4444;
           font-size: 0.8rem;
-          margin-top: 10px;
+          margin-top: 8px;
           font-weight: bold;
         }
 
         .login-numpad {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-          margin-bottom: 24px;
+          gap: 10px;
+          margin-bottom: 20px;
         }
 
         .login-num-btn {
-          height: 52px;
+          height: 46px;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
+          border-radius: 10px;
           color: white;
-          font-size: 1.4rem;
+          font-size: 1.3rem;
           font-weight: 600;
           cursor: pointer;
           display: flex;
@@ -377,12 +378,12 @@ const Login = ({ onLoginSuccess }) => {
 
         .login-submit-btn {
           width: 100%;
-          height: 50px;
+          height: 46px;
           background: var(--primary, #3b82f6);
           color: white;
           border: none;
-          border-radius: 16px;
-          font-size: 1rem;
+          border-radius: 12px;
+          font-size: 0.95rem;
           font-weight: bold;
           cursor: pointer;
           display: flex;
@@ -417,6 +418,70 @@ const Login = ({ onLoginSuccess }) => {
           animation: shake 0.4s ease-in-out;
           border-color: #ef4444;
           background: rgba(239, 68, 68, 0.05);
+        }
+
+        /* 📱 Responsive overrides for extremely tiny mobile screens and landscape orientations */
+        @media (max-width: 480px), (max-height: 680px) {
+          .login-container {
+            padding: 16px 14px;
+            border-radius: 18px;
+            max-width: 320px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+          }
+          .login-logo-container {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+          }
+          .login-logo-container svg {
+            width: 22px !important;
+            height: 22px !important;
+          }
+          h1 {
+            font-size: 1.25rem !important;
+            margin: 6px 0 2px 0 !important;
+          }
+          p {
+            font-size: 0.75rem !important;
+          }
+          .login-user-select {
+            gap: 6px;
+            margin-bottom: 12px;
+          }
+          .login-user-btn {
+            padding: 8px 4px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            gap: 4px;
+          }
+          .login-user-btn svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+          .login-pin-display {
+            padding: 8px;
+            min-height: 48px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+          }
+          .login-dot {
+            width: 8px;
+            height: 8px;
+          }
+          .login-numpad {
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+          .login-num-btn {
+            height: 38px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+          }
+          .login-submit-btn {
+            height: 38px;
+            font-size: 0.85rem;
+            border-radius: 10px;
+          }
         }
       `}} />
     </div>

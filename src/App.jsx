@@ -1269,20 +1269,20 @@ const SecurityModal = ({ onClose }) => {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 100000 }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '24px', position: 'relative', border: '1px solid var(--border)' }}>
-        <h3 className="flex" style={{ fontSize: '1.3rem', margin: '0 0 16px 0', borderBottom: '1px solid var(--border)', paddingBottom: '12px', color: 'white' }}>
-          <KeyRound size={20} color="var(--accent)" /> إعدادات الأمان وتغيير كلمات المرور
+      <div className="glass-card" style={{ width: '100%', maxWidth: '330px', padding: '16px', position: 'relative', border: '1px solid var(--border)' }}>
+        <h3 className="flex" style={{ fontSize: '1.15rem', margin: '0 0 12px 0', borderBottom: '1px solid var(--border)', paddingBottom: '10px', color: 'white' }}>
+          <KeyRound size={18} color="var(--accent)" /> إعدادات الأمان
         </h3>
         
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* User selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>المستخدم المراد تغيير كلمة سره:</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>المستخدم:</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
                 className="btn-primary"
-                style={{ flex: 1, background: targetUser === 'admin' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'admin' ? 'none' : '1px solid var(--border)', justifyContent: 'center' }}
+                style={{ flex: 1, height: '38px', background: targetUser === 'admin' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'admin' ? 'none' : '1px solid var(--border)', justifyContent: 'center', fontSize: '0.8rem' }}
                 onClick={() => { setTargetUser('admin'); setError(''); setSuccess(''); }}
               >
                 المدير (Admin)
@@ -1290,7 +1290,7 @@ const SecurityModal = ({ onClose }) => {
               <button
                 type="button"
                 className="btn-primary"
-                style={{ flex: 1, background: targetUser === 'casher' ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'casher' ? 'none' : '1px solid var(--border)', justifyContent: 'center' }}
+                style={{ flex: 1, height: '38px', background: targetUser === 'casher' ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'casher' ? 'none' : '1px solid var(--border)', justifyContent: 'center', fontSize: '0.8rem' }}
                 onClick={() => { setTargetUser('casher'); setError(''); setSuccess(''); }}
               >
                 الكاشير (Casher)
@@ -1299,14 +1299,14 @@ const SecurityModal = ({ onClose }) => {
           </div>
 
           {/* New PIN */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>كلمة المرور الجديدة (أرقام فقط):</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>كلمة المرور الجديدة:</label>
             <input
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
               className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1.1rem', letterSpacing: '2px', textAlign: 'center' }}
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1rem', letterSpacing: '2px', textAlign: 'center' }}
               value={newPin}
               onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
               placeholder="••••"
@@ -1315,14 +1315,14 @@ const SecurityModal = ({ onClose }) => {
           </div>
 
           {/* Confirm PIN */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>تأكيد كلمة المرور الجديدة:</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>تأكيد كلمة المرور:</label>
             <input
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
               className="glass-card"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1.1rem', letterSpacing: '2px', textAlign: 'center' }}
+              style={{ background: 'rgba(255,255,255,0.05)', color: 'white', padding: '10px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '1rem', letterSpacing: '2px', textAlign: 'center' }}
               value={confirmPin}
               onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
               placeholder="••••"
@@ -1330,12 +1330,12 @@ const SecurityModal = ({ onClose }) => {
             />
           </div>
 
-          {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 'bold', textAlign: 'center' }}>{error}</div>}
-          {success && <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 'bold', textAlign: 'center' }}>{success}</div>}
+          {error && <div style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold', textAlign: 'center' }}>{error}</div>}
+          {success && <div style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 'bold', textAlign: 'center' }}>{success}</div>}
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-            <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>حفظ التعديل</button>
-            <button type="button" onClick={onClose} style={{ flex: 0.5, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '8px' }}>إلغاء</button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <button type="submit" className="btn-primary" style={{ flex: 1, height: '38px', justifyContent: 'center', fontSize: '0.85rem' }}>حفظ التعديل</button>
+            <button type="button" onClick={onClose} style={{ flex: 0.5, height: '38px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '8px', fontSize: '0.85rem' }}>إلغاء</button>
           </div>
         </form>
       </div>
