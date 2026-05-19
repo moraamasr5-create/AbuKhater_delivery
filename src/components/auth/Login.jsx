@@ -179,7 +179,7 @@ const Login = ({ onLoginSuccess }) => {
           borderTop: '1px solid rgba(255, 255, 255, 0.05)',
           paddingTop: '12px'
         }}>
-          Developed & Owned by <span style={{ color: 'var(--accent, #10b981)', fontWeight: 'bold' }}>AmrMamdouh ✔</span> (01038035884)
+          Developed & Owned by <span style={{ color: 'var(--accent, #10b981)', fontWeight: 'bold' }}>AmrMamdouh✔ </span> (01038035884)
         </div>
       </div>
 
