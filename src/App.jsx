@@ -1,4 +1,4 @@
-// Developed & Owned by D.AmrMamdouh - 01038035884
+// Developed & Owned by AmrMamdouh - 01038035884
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
@@ -1274,7 +1274,7 @@ const SecurityModal = ({ onClose }) => {
         <h3 className="flex" style={{ fontSize: '1.15rem', margin: '0 0 12px 0', borderBottom: '1px solid var(--border)', paddingBottom: '10px', color: 'white' }}>
           <KeyRound size={18} color="var(--accent)" /> إعدادات الأمان
         </h3>
-        
+
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* User selector */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1513,12 +1513,12 @@ function App() {
           </div>
 
           {/* 🛡️ Modern minimal Ownership Footer */}
-          <footer style={{ 
-            marginTop: '40px', 
-            paddingTop: '20px', 
-            borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
-            textAlign: 'center', 
-            fontSize: '0.8rem', 
+          <footer style={{
+            marginTop: '40px',
+            paddingTop: '20px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+            textAlign: 'center',
+            fontSize: '0.8rem',
             color: 'var(--text-muted)',
             display: 'flex',
             flexDirection: 'column',
@@ -1527,7 +1527,7 @@ function App() {
           }}>
             <div>جميع الحقوق محفوظة © {new Date().getFullYear()} نظام توصيل أبو خاطر</div>
             <div style={{ opacity: 0.7, direction: 'ltr', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              Developed & Owned by <strong style={{ color: 'var(--accent)' }}>D.AmrMamdouh</strong> (01038035884)
+              Developed & Owned by <strong style={{ color: 'var(--accent)' }}>AmrMamdouh</strong> (01038035884)
             </div>
           </footer>
         </div>
