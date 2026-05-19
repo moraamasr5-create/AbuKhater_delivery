@@ -72,6 +72,8 @@ export const supabaseService = {
           displayStatus: rawStatus || 'pending',
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
           source: 'online',
+          pilotId: row.pilot_id || null,
+          pilotName: row.pilot_name || null,
           lat: row.latitude || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
           lng: row.longitude || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
           rawPayload: rawPayload
@@ -84,7 +86,7 @@ export const supabaseService = {
   },
 
   // 2. تحديث حالة الطلب
-  async updateOrderStatus(orderId, newStatus, reason = null) {
+  async updateOrderStatus(orderId, newStatus, reason = null, extraFields = {}) {
     try {
       const cleanId = String(orderId).replace('EXT-', '');
       let dbStatus = newStatus;
@@ -104,7 +106,8 @@ export const supabaseService = {
       }
       
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
-      let query = supabase.from('orders').update({ status: dbStatus });
+      const updatePayload = { status: dbStatus, ...extraFields };
+      let query = supabase.from('orders').update(updatePayload);
 
       if (isUuid) {
         query = query.eq('id', cleanId);

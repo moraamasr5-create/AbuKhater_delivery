@@ -26,16 +26,7 @@ const sendToN8N = async (payload, type) => {
   }
 };
 
-/**
- * 🔴 الدالة دي بتبعت تحديث "حالة الطلب" مباشرة لـ Supabase
- */
-const updateExternalOrderStatus = async (orderId, newStatus, reason = null) => {
-  try {
-    await supabaseService.updateOrderStatus(orderId, newStatus, reason);
-  } catch (e) {
-    console.error('External Status Update Exception:', e);
-  }
-};
+// Removed updateExternalOrderStatus from here to move it inside AppProvider
 
 export const AppProvider = ({ children }) => {
   // 🔴 نظام الأدوار (Role System)
@@ -122,6 +113,20 @@ export const AppProvider = ({ children }) => {
 
   // 🔥 3. Real-time Dashboard (Supabase Live System)
   const retryRef = useRef(0);
+  const pendingUpdatesRef = useRef(new Set()); // Set of supabaseIds being updated
+
+  const updateExternalOrderStatus = async (orderId, newStatus, reason = null, extraFields = {}) => {
+    pendingUpdatesRef.current.add(String(orderId));
+    try {
+      await supabaseService.updateOrderStatus(orderId, newStatus, reason, extraFields);
+    } catch (e) {
+      console.error('External Status Update Exception:', e);
+    } finally {
+      setTimeout(() => {
+        pendingUpdatesRef.current.delete(String(orderId));
+      }, 2000);
+    }
+  };
 
   useEffect(() => {
     if (currentShift?.status !== 'open' || !API_CONFIG.AUTO_REFRESH) return;
@@ -141,13 +146,40 @@ export const AppProvider = ({ children }) => {
 
         if (fetchedOrders && fetchedOrders.length > 0) {
           setOrders(prev => {
-            const newOrders = fetchedOrders.filter(fo => !prev.some(o => (o.originalId || o.id) === fo.originalId));
-            if (newOrders.length > 0) {
+            const newOrdersForAudio = fetchedOrders.filter(fo => {
+              const notInPrev = !prev.some(o => (o.originalId || o.id) === fo.originalId);
+              const isRecentlyCreated = fo.timestamp && 
+                (Date.now() - new Date(fo.timestamp).getTime()) < 3 * 60 * 1000;
+              return notInPrev && isRecentlyCreated;
+            });
+
+            if (newOrdersForAudio.length > 0) {
               new Audio(API_CONFIG.SOUNDS.NEW_ORDER).play().catch(() => { });
-              logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrders.length} new orders`, 'System');
-              return [...newOrders, ...prev];
+              logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrdersForAudio.length} new orders`, 'System');
             }
-            return fetchedOrders; // Re-sync existing state with fresh DB data
+
+            const LOCAL_ONLY_FIELDS = ['pilotId', 'assignedAt', 'confirmedAt', 'startTime', 'endTime', 'failureReason', 'cancellationReason', 'cancelledAt', 'logs', 'shiftId'];
+
+            const mergedOrders = fetchedOrders.map(fo => {
+              const existing = prev.find(o => (o.originalId || o.id) === fo.originalId);
+              if (!existing) return fo;
+
+              const isPending = pendingUpdatesRef.current.has(String(fo.supabaseId)) || pendingUpdatesRef.current.has(String(fo.originalId));
+              const localIsNewer = existing.confirmedAt || existing.assignedAt || existing.startTime;
+
+              const mergedStatus = isPending ? existing.status : (localIsNewer ? existing.status : fo.status);
+
+              const localFields = {};
+              LOCAL_ONLY_FIELDS.forEach(f => {
+                if (existing[f] !== undefined) localFields[f] = existing[f];
+              });
+
+              return { ...fo, ...localFields, status: mergedStatus };
+            });
+
+            const manualOrders = prev.filter(p => !p.supabaseId && !fetchedOrders.some(fo => fo.originalId === (p.originalId || p.id)));
+
+            return [...mergedOrders, ...manualOrders];
           });
         }
       } catch (err) {
@@ -325,6 +357,7 @@ export const AppProvider = ({ children }) => {
       ...orderData,
       id: finalId,
       originalId: orderData.id, // Store original receipt No for display
+      source: orderData.source || 'manual',
       status: 'pending_timer', // Initial status
       timestamp: getSafeISOTime(),
       shiftId: currentShift.id, // Link to Shift
@@ -372,13 +405,15 @@ export const AppProvider = ({ children }) => {
     ));
     logAction('ORDER_CANCEL', `Order #${orderId} cancelled. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'cancelled', cancellationReason: reason }, 'ORDER_CANCEL');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'cancelled', reason);
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'cancelled', reason);
+    }
   };
 
   // Step 1: Manager Confirms Details -> Waiting For Driver
   const confirmOrder = async (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || order.status !== 'pending') return;
+    if (!order || !['pending', 'pending_timer'].includes(order.status)) return;
 
     const updatedOrder = { ...order, status: 'waiting_driver', confirmedAt: getSafeISOTime() };
 
@@ -386,7 +421,9 @@ export const AppProvider = ({ children }) => {
       o.id === orderId ? updatedOrder : o
     ));
     logAction('ORDER_CONFIRM', `Order #${orderId} confirmed. Waiting for driver.`, 'Supervisor');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'confirmed');
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'confirmed');
+    }
 
     try {
       await printerService.printKitchenReceipt(updatedOrder);
@@ -408,7 +445,9 @@ export const AppProvider = ({ children }) => {
     ));
     const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'driver_assigned');
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { pilot_id: String(pilotId), pilot_name: pilotName });
+    }
   };
 
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
@@ -430,7 +469,9 @@ export const AppProvider = ({ children }) => {
     ));
 
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'out_for_delivery');
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'out_for_delivery');
+    }
   };
 
   // Step 4: Complete (Pilot Returns -> Status Available + Queue Update)
@@ -454,7 +495,9 @@ export const AppProvider = ({ children }) => {
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed' }, 'ORDER_COMPLETE');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'completed');
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'completed');
+    }
   };
 
   const failDelivery = (orderId, reason) => {
@@ -477,7 +520,9 @@ export const AppProvider = ({ children }) => {
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason }, 'ORDER_FAIL');
-    updateExternalOrderStatus(order.supabaseId || order.originalId || order.id, 'failed_delivery', reason);
+    if (order.supabaseId) {
+      updateExternalOrderStatus(order.supabaseId, 'failed_delivery', reason);
+    }
   };
 
   const togglePilotShift = async (pilotId) => {
