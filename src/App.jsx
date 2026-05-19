@@ -1270,8 +1270,30 @@ const SecurityModal = ({ onClose }) => {
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 100000 }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '330px', padding: '16px', position: 'relative', border: '1px solid var(--border)' }}>
+    <div 
+      onClick={onClose} 
+      style={{ 
+        position: 'fixed', 
+        inset: 0, 
+        background: 'rgba(0,0,0,0.8)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        zIndex: 100000, 
+        backdropFilter: 'blur(12px)' 
+      }}
+    >
+      <div 
+        className="glass-card" 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: '100%', 
+          maxWidth: '330px', 
+          padding: '16px', 
+          position: 'relative', 
+          border: '1px solid var(--border)' 
+        }}
+      >
         <h3 className="flex" style={{ fontSize: '1.15rem', margin: '0 0 12px 0', borderBottom: '1px solid var(--border)', paddingBottom: '10px', color: 'white' }}>
           <KeyRound size={18} color="var(--accent)" /> إعدادات الأمان
         </h3>
