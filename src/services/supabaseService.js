@@ -1,3 +1,4 @@
+// Developed & Owned by D.AmrMamdouh - 01038035884
 import { supabase } from '../config/supabaseClient';
 
 /**

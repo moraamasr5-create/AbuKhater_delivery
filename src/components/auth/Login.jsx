@@ -1,3 +1,4 @@
+// Developed & Owned by D.AmrMamdouh - 01038035884
 import React, { useState, useEffect } from 'react';
 import { Shield, KeyRound, User, Delete, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -167,6 +168,19 @@ const Login = ({ onLoginSuccess }) => {
           <Check size={20} />
           <span>تأكيد الدخول</span>
         </button>
+
+        {/* Ownership Notice */}
+        <div style={{ 
+          marginTop: '20px', 
+          textAlign: 'center', 
+          fontSize: '0.72rem', 
+          color: 'rgba(255, 255, 255, 0.35)', 
+          direction: 'ltr',
+          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+          paddingTop: '12px'
+        }}>
+          Developed & Owned by <span style={{ color: 'var(--accent, #10b981)', fontWeight: 'bold' }}>D.AmrMamdouh</span> (01038035884)
+        </div>
       </div>
 
       {/* Embedded Styles for Login Screen */}

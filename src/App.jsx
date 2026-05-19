@@ -1,3 +1,4 @@
+// Developed & Owned by D.AmrMamdouh - 01038035884
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
@@ -1510,6 +1511,25 @@ function App() {
             {activeTab === 'reservations' && (userRole === 'admin' || userRole === 'casher') && <ReservationView />}
             {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
+
+          {/* 🛡️ Modern minimal Ownership Footer */}
+          <footer style={{ 
+            marginTop: '40px', 
+            paddingTop: '20px', 
+            borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
+            textAlign: 'center', 
+            fontSize: '0.8rem', 
+            color: 'var(--text-muted)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            alignItems: 'center'
+          }}>
+            <div>جميع الحقوق محفوظة © {new Date().getFullYear()} نظام توصيل أبو خاطر</div>
+            <div style={{ opacity: 0.7, direction: 'ltr', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Developed & Owned by <strong style={{ color: 'var(--accent)' }}>D.AmrMamdouh</strong> (01038035884)
+            </div>
+          </footer>
         </div>
       </main>
     </div>

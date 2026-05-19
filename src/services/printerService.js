@@ -1,3 +1,4 @@
+// Developed & Owned by D.AmrMamdouh - 01038035884
 // Cache to prevent duplicate printing across app re-renders
 const printedCacheKey = 'PRINTED_ORDERS_CACHE';
 const getPrintedCache = () => {
@@ -108,6 +109,9 @@ class PrinterService {
       </head>
       <body>
         ${content}
+        <div style="text-align: center; font-size: 9px; color: #555; margin-top: 15px; border-top: 1px dotted #000; padding-top: 5px; font-family: sans-serif; direction: ltr;">
+          Developed & Owned by D.AmrMamdouh - 01038035884
+        </div>
       </body>
       </html>
     `;
