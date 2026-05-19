@@ -1489,8 +1489,8 @@ function App() {
       />
       <main className="main-content">
         <div className="app-container">
-          {/* 🔴 أزرار الإضافة - مسموحة للمدير والكاشير */}
-          {isShiftOpen && (userRole === 'admin' || userRole === 'casher') && (
+          {/* 🔴 أزرار الإضافة - مسموحة للكاشير فقط */}
+          {isShiftOpen && userRole === 'casher' && (
             <div className="flex flex-wrap" style={{ marginBottom: '24px', gap: '12px' }}>
               <button
                 onClick={() => setActiveModal('manual')}

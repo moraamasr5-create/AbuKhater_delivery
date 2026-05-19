@@ -13,7 +13,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
     const allMenuItems = [
         { id: 'dashboard', label: 'الرئيسية', icon: Home, roles: ['admin', 'casher'] },
         {
-            id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['admin', 'casher', 'driver']
+            id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['casher', 'driver']
         },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
         { id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['casher'], special: true },
@@ -154,14 +154,14 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                                 closeSidebar();
                             }}
                             className="btn-primary"
-                            style={{ 
-                                width: '42px', 
-                                height: '42px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                background: 'rgba(255, 255, 255, 0.05)', 
-                                border: '1px solid var(--border)', 
+                            style={{
+                                width: '42px',
+                                height: '42px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid var(--border)',
                                 padding: 0,
                                 flexShrink: 0
                             }}
