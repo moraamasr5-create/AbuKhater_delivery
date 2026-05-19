@@ -697,7 +697,7 @@ export const AppProvider = ({ children }) => {
         }
       });
 
-      const attendancePay = Math.floor(totalMinutes / 15) * 5;
+      const attendancePay = Math.floor(totalMinutes / 36) * 15;
 
       return {
         ...p,
