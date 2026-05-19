@@ -348,6 +348,48 @@ export const supabaseService = {
     }
   },
 
+  // 10. إدارة توفر عناصر المطبخ من خلال جدول menu_items القائم
+  async fetchMenuAvailability() {
+    try {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('name, status');
+
+      if (error) {
+        console.error('❌ Supabase fetchMenuAvailability error:', error);
+        return [];
+      }
+      
+      // تحويل البيانات لتناسب الواجهة
+      return (data || []).map(row => ({
+        item_name: row.name,
+        is_available: row.status === 'available'
+      }));
+    } catch (err) {
+      console.error('❌ Supabase fetchMenuAvailability exception:', err);
+      return [];
+    }
+  },
+
+  async updateMenuAvailability(itemName, isAvailable) {
+    try {
+      const statusValue = isAvailable ? 'available' : 'unavailable';
+      const { error } = await supabase
+        .from('menu_items')
+        .update({ status: statusValue, updated_at: new Date().toISOString() })
+        .eq('name', itemName);
+
+      if (error) {
+        console.error('❌ Supabase updateMenuAvailability error:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('❌ Supabase updateMenuAvailability exception:', err);
+      return false;
+    }
+  },
+
   // 8. Realtime Subscriptions
   subscribeToOrders(callback) {
     return supabase
