@@ -675,7 +675,7 @@ export const AppProvider = ({ children }) => {
       const row = savedData[0];
       const newRes = {
         supabaseId: row.id,
-        id: `RES-${String(row.id).slice(0, 6)}`,
+        id: `RES-${row.id}`,
         timestamp: row.created_at || getSafeISOTime(),
         status: 'pending',
         deposit: resData.deposit || 50,

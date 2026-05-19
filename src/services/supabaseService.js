@@ -141,15 +141,15 @@ export const supabaseService = {
 
       return data.map(row => ({
         supabaseId: row.id,
-        id: `RES-${row.id.slice(0, 6)}`,
-        customerName: row.name || 'عميل بدون اسم',
-        phone: row.phone || '',
-        date: row.date || '',
-        time: row.time || '',
-        guests: row.guests || 2,
+        id: `RES-${row.id}`,
+        customerName: row.customer_name || 'عميل بدون اسم',
+        phone: row.customer_phone || '',
+        date: row.reservation_date || '',
+        time: row.reservation_time || '',
+        guests: row.guests_count || 2,
         locationType: row.location_type || 'restaurant',
         notes: row.notes || '',
-        paymentProof: row.payment_screenshot || null,
+        paymentProof: row.payment_proof_url || null,
         status: row.status || 'pending',
         timestamp: row.created_at || new Date().toISOString()
       }));
