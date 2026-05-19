@@ -101,19 +101,19 @@ const Login = ({ onLoginSuccess }) => {
         <div className={`login-pin-display ${isShaking ? 'shake' : ''}`}>
           <div className="login-dots-container">
             {[...Array(4)].map((_, i) => (
-              <span 
-                key={i} 
+              <span
+                key={i}
                 className={`login-dot ${pin.length > i ? 'active' : ''}`}
               />
             ))}
             {pin.length > 4 && [...Array(pin.length - 4)].map((_, i) => (
-              <span 
-                key={i + 4} 
+              <span
+                key={i + 4}
                 className="login-dot active"
               />
             ))}
           </div>
-          
+
           {error && <p className="login-error-msg">{error}</p>}
         </div>
 
@@ -129,7 +129,7 @@ const Login = ({ onLoginSuccess }) => {
               {num}
             </button>
           ))}
-          
+
           {/* Action Row */}
           <button
             type="button"
@@ -139,7 +139,7 @@ const Login = ({ onLoginSuccess }) => {
           >
             تصفير
           </button>
-          
+
           <button
             type="button"
             className="login-num-btn"
@@ -147,7 +147,7 @@ const Login = ({ onLoginSuccess }) => {
           >
             0
           </button>
-          
+
           <button
             type="button"
             className="login-num-btn delete-btn"
@@ -170,21 +170,22 @@ const Login = ({ onLoginSuccess }) => {
         </button>
 
         {/* Ownership Notice */}
-        <div style={{ 
-          marginTop: '20px', 
-          textAlign: 'center', 
-          fontSize: '0.72rem', 
-          color: 'rgba(255, 255, 255, 0.35)', 
+        <div style={{
+          marginTop: '20px',
+          textAlign: 'center',
+          fontSize: '0.72rem',
+          color: 'rgba(255, 255, 255, 0.35)',
           direction: 'ltr',
           borderTop: '1px solid rgba(255, 255, 255, 0.05)',
           paddingTop: '12px'
         }}>
-          Developed & Owned by <span style={{ color: 'var(--accent, #10b981)', fontWeight: 'bold' }}>D.AmrMamdouh</span> (01038035884)
+          Developed & Owned by <span style={{ color: 'var(--accent, #10b981)', fontWeight: 'bold' }}>✔ AmrMamdouh ✔</span> ( ✔ 01038035884 ✔ )
         </div>
       </div>
 
       {/* Embedded Styles for Login Screen */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 
         .login-viewport * {
