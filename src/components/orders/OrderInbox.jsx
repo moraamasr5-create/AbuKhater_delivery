@@ -144,6 +144,7 @@ const OrderInbox = ({ onReedit }) => {
                     <h2 style={{ fontSize: '2.5rem', fontWeight: '700' }}>مرحلة التجهيز والإسناد</h2>
                     <p style={{ color: 'var(--text-muted)' }}>مراجعة الطلبات &gt; اختيار الطيار (Fair Queue) &gt; الطباعة والإسناد &gt; خروج الطيار</p>
                 </div>
+                {/* 
                 <button
                     onClick={handleManualRefresh}
                     disabled={isRefreshing}
@@ -158,6 +159,7 @@ const OrderInbox = ({ onReedit }) => {
                     <RefreshCw size={20} className={isRefreshing ? 'pulse-dot' : ''} />
                     <span style={{ fontWeight: 'bold' }}>تنشيط الاستلام</span>
                 </button>
+                */}
             </header>
 
             {inboxOrders.length === 0 ? (
