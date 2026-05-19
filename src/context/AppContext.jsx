@@ -80,35 +80,6 @@ export const AppProvider = ({ children }) => {
 
   const [reservations, setReservations] = useState([]);
   const [pilots, setPilots] = useState([]);
-  const [menuAvailability, setMenuAvailability] = useState({});
-
-  const loadMenuAvailability = async () => {
-    try {
-      const data = await supabaseService.fetchMenuAvailability();
-      const availabilityMap = {};
-      if (data) {
-        data.forEach(row => {
-          availabilityMap[row.item_name] = row.is_available;
-        });
-      }
-      setMenuAvailability(availabilityMap);
-    } catch (e) {
-      console.error('Error fetching menu availability:', e);
-    }
-  };
-
-  const toggleMenuItemAvailability = async (itemName, isAvailable) => {
-    setMenuAvailability(prev => ({ ...prev, [itemName]: isAvailable }));
-    try {
-      await supabaseService.updateMenuAvailability(itemName, isAvailable);
-    } catch (e) {
-      console.error('Error updating menu availability:', e);
-    }
-  };
-
-  useEffect(() => {
-    loadMenuAvailability();
-  }, []);
 
   const [currentShift, setCurrentShift] = useState(() => {
     try {
@@ -848,7 +819,6 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       orders, pilots, currentShift, dailyReports, auditLogs, reservations,
-      menuAvailability, toggleMenuItemAvailability,
       userRole, setUserRole, // 🔐 تصدير بيانات الدور لباقي السيستم
       openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot,
       addReservation, confirmReservation, deleteReservation,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare, Utensils } from 'lucide-react';
+import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
@@ -15,8 +15,6 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
         { id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['admin', 'casher', 'driver'] },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
         { id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['admin', 'casher'], special: true },
-        { id: 'kitchen', label: 'التحكم في المطبخ', icon: Utensils, roles: ['admin', 'casher'] },
-        { id: 'feedback', label: 'الشكاوى والمقترحات', icon: MessageSquare, roles: ['admin', 'casher'] },
         { id: 'reports', label: 'التقارير', icon: BarChart3, roles: ['admin'] },
     ];
 
@@ -29,12 +27,12 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                     <img src="/logo.png" alt="Abu Khater" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: '800' }}>إدارة طيارين أبو خاطر</h2>
-                
+
                 {/* 🛡️ شارة المستخدم الحالي النشط */}
-                <div 
-                  style={{ background: userRole === 'admin' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: userRole === 'admin' ? '#60a5fa' : '#34d399', border: '1px solid currentColor', padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}
+                <div
+                    style={{ background: userRole === 'admin' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: userRole === 'admin' ? '#60a5fa' : '#34d399', border: '1px solid currentColor', padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}
                 >
-                  {userRole === 'admin' ? '👑 مدير النظام (Admin)' : '👤 الكاشير (Casher)'}
+                    {userRole === 'admin' ? '👑 مدير النظام (Admin)' : '👤 الكاشير (Casher)'}
                 </div>
             </div>
 

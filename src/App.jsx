@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
-import FeedbackView from './components/feedback/FeedbackView';
-import KitchenView from './components/kitchen/KitchenView';
 import Login from './components/auth/Login';
 import { useApp } from './context/AppContext';
 import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound } from 'lucide-react';
@@ -599,7 +597,7 @@ const SIMPLE_MENU = {
 };
 
 const ManualOrderForm = ({ onClose, initialData }) => {
-  const { addOrder, sendToN8N, menuAvailability } = useApp();
+  const { addOrder, sendToN8N } = useApp();
   const [formData, setFormData] = useState(initialData?.formData || {
     receiptNo: '', customerName: '', phone: '', area: '',
     lat: null, lng: null, zone: null, distance: 0,
@@ -881,30 +879,11 @@ const ManualOrderForm = ({ onClose, initialData }) => {
               ))}
             </div>
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px', maxHeight: '250px', overflowY: 'auto' }}>
-              {SIMPLE_MENU[activeCategory].map(item => {
-                const isAvailable = menuAvailability[item] !== false;
-                return (
-                  <button 
-                    key={item} 
-                    disabled={!isAvailable} 
-                    onClick={() => handleAddItem(item)} 
-                    style={{ 
-                      padding: '10px', 
-                      borderRadius: '10px', 
-                      border: isAvailable ? '1px solid var(--border)' : '1px dashed var(--danger)', 
-                      background: !isAvailable 
-                        ? 'rgba(239, 68, 68, 0.05)' 
-                        : (selectedItems[item] ? 'rgba(79, 70, 229, 0.2)' : 'transparent'), 
-                      color: isAvailable ? 'white' : 'var(--text-muted)',
-                      cursor: isAvailable ? 'pointer' : 'not-allowed',
-                      opacity: isAvailable ? 1 : 0.5,
-                      textDecoration: isAvailable ? 'none' : 'line-through'
-                    }}
-                  >
-                    {item} {selectedItems[item] && `x${selectedItems[item]}`} {!isAvailable && ' (نفذ)'}
-                  </button>
-                );
-              })}
+              {SIMPLE_MENU[activeCategory].map(item => (
+                <button key={item} onClick={() => handleAddItem(item)} style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', background: selectedItems[item] ? 'rgba(79, 70, 229, 0.2)' : 'transparent', color: 'white' }}>
+                  {item} {selectedItems[item] && `x${selectedItems[item]}`}
+                </button>
+              ))}
             </div>
             <textarea style={{ background: 'rgba(0,0,0,0.2)', color: 'white', padding: '12px', borderRadius: '10px', resize: 'none', minHeight: '60px' }} placeholder="ملاحظات المطبخ..." value={formData.itemsDescription} onChange={e => setFormData({ ...formData, itemsDescription: e.target.value })} />
           </div>
@@ -1530,8 +1509,6 @@ function App() {
             {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
             {activeTab === 'pilots' && (userRole === 'admin' || userRole === 'casher') && <PilotManagement />}
             {activeTab === 'reservations' && (userRole === 'admin' || userRole === 'casher') && <ReservationView />}
-            {activeTab === 'kitchen' && (userRole === 'admin' || userRole === 'casher') && <KitchenView />}
-            {activeTab === 'feedback' && (userRole === 'admin' || userRole === 'casher') && <FeedbackView />}
             {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
 
