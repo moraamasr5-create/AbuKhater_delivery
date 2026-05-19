@@ -527,13 +527,22 @@ export const AppProvider = ({ children }) => {
         : o
     ));
 
-    // Return Pilot to Queue (Last Return Time = Now)
+    // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
-      setPilots(prev => prev.map(p =>
-        p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: nowTime, ordersCount: (p.ordersCount || 0) + 1 }
-          : p
-      ));
+      setPilots(prev => prev.map(p => {
+        if (p.id === order.pilotId) {
+          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
+          const nextState = otherActive ? 'out' : 'available';
+          const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
+          return {
+            ...p,
+            state: nextState,
+            ordersCount: (p.ordersCount || 0) + 1,
+            ...returnTimeUpdates
+          };
+        }
+        return p;
+      }));
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
@@ -553,13 +562,21 @@ export const AppProvider = ({ children }) => {
         : o
     ));
 
-    // Return Pilot to Queue (Last Return Time = Now)
+    // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
-      setPilots(prev => prev.map(p =>
-        p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: nowTime }
-          : p
-      ));
+      setPilots(prev => prev.map(p => {
+        if (p.id === order.pilotId) {
+          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
+          const nextState = otherActive ? 'out' : 'available';
+          const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
+          return {
+            ...p,
+            state: nextState,
+            ...returnTimeUpdates
+          };
+        }
+        return p;
+      }));
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason, endTime: nowTime, failedAt: nowTime }, 'ORDER_FAIL');

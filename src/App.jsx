@@ -346,9 +346,11 @@ const DashboardView = () => {
 
   const pilotsWithOrders = pilots.filter(p => ordersByPilot[p.id]);
 
-  // Set default view pilot if none selected and pilots exist
+  // Set default view pilot if none selected and pilots exist, or reset if pilot is no longer outside
   useEffect(() => {
-    if (!viewPilotId && pilotsWithOrders.length > 0) {
+    if (pilotsWithOrders.length === 0) {
+      setViewPilotId(null);
+    } else if (!viewPilotId || !pilotsWithOrders.some(p => p.id === viewPilotId)) {
       setViewPilotId(pilotsWithOrders[0].id);
     }
   }, [pilotsWithOrders, viewPilotId]);
@@ -534,7 +536,9 @@ const DashboardView = () => {
         <div className="grid grid-2">
           {/* Active Pilots Card */}
           <div className="card" style={{ borderRight: '4px solid var(--accent)' }}>
-            <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>طيارين متاحين ({activePilots.length})</h4>
+            <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>
+              الطيارين بالخدمة ({activePilots.length}) • (متاح: {activePilots.filter(p => p.state === 'available').length} | بالخارج: {activePilots.filter(p => p.state === 'out').length})
+            </h4>
             <div className="grid" style={{ gap: '10px' }}>
               {activePilots.length > 0 ? activePilots.map(p => {
                 const currentLoad = orders.filter(o =>
