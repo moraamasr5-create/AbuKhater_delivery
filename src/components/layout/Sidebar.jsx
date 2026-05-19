@@ -33,7 +33,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                 <div
                     style={{ background: userRole === 'admin' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: userRole === 'admin' ? '#60a5fa' : '#34d399', border: '1px solid currentColor', padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}
                 >
-                    {userRole === 'admin' ? '👑 مدير النظام (Admin)' : '👤 الكاشير (Casher)'}
+                    {userRole === 'admin' ? '👑 مشرف النظام (Admin)' : '👤 الكاشير (Casher)'}
                 </div>
             </div>
 

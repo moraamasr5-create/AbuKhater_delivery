@@ -1261,7 +1261,7 @@ const SecurityModal = ({ onClose }) => {
     // Save to localStorage
     const storageKey = `b_delivery_password_${targetUser}`;
     localStorage.setItem(storageKey, newPin);
-    setSuccess(`✅ تم تغيير كلمة مرور ${targetUser === 'admin' ? 'المدير' : 'الكاشير'} بنجاح!`);
+    setSuccess(`✅ تم تغيير كلمة مرور ${targetUser === 'admin' ? 'المشرف' : 'الكاشير'} بنجاح!`);
     setNewPin('');
     setConfirmPin('');
     setTimeout(() => {
@@ -1287,7 +1287,7 @@ const SecurityModal = ({ onClose }) => {
                 style={{ flex: 1, height: '38px', background: targetUser === 'admin' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: 'white', border: targetUser === 'admin' ? 'none' : '1px solid var(--border)', justifyContent: 'center', fontSize: '0.8rem' }}
                 onClick={() => { setTargetUser('admin'); setError(''); setSuccess(''); }}
               >
-                المدير (Admin)
+                المشرف (Admin)
               </button>
               <button
                 type="button"

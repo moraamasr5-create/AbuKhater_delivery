@@ -1,4 +1,4 @@
-// Developed & Owned by D.AmrMamdouh - 01038035884
+// Developed & Owned by AmrMamdouh - 01038035884
 import React, { useState, useEffect } from 'react';
 import { Shield, KeyRound, User, Delete, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
