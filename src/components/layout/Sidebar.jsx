@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut } from 'lucide-react';
+import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
@@ -9,12 +9,13 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
     const pendingCount = orders.filter(o => ['pending', 'pending_timer', 'waiting_driver'].includes(o.status)).length;
 
     // 🟢 تصفية القائمة بناءً على صلاحيات المستخدم
-    // الأدمن بيشوف كل حاجة، الكاشير بيشوف كل حاجة ما عدا التقارير
+    // الأدمن بيشوف كل حاجة، الكاشير بيشوف كل حاجة ما عدا التقارير والشكاوى
     const allMenuItems = [
         { id: 'dashboard', label: 'الرئيسية', icon: Home, roles: ['admin', 'casher'] },
         { id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['admin', 'casher', 'driver'] },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
         { id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['admin', 'casher'], special: true },
+        { id: 'feedback', label: 'الشكاوى والمقترحات', icon: MessageSquare, roles: ['admin'] },
         { id: 'reports', label: 'التقارير', icon: BarChart3, roles: ['admin'] },
     ];
 

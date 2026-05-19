@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import OrderInbox from './components/orders/OrderInbox';
 import ReportsView from './components/reports/ReportsView';
+import FeedbackView from './components/feedback/FeedbackView';
 import Login from './components/auth/Login';
 import { useApp } from './context/AppContext';
 import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound } from 'lucide-react';
@@ -1509,6 +1510,7 @@ function App() {
             {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
             {activeTab === 'pilots' && (userRole === 'admin' || userRole === 'casher') && <PilotManagement />}
             {activeTab === 'reservations' && (userRole === 'admin' || userRole === 'casher') && <ReservationView />}
+            {activeTab === 'feedback' && userRole === 'admin' && <FeedbackView />}
             {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
 
