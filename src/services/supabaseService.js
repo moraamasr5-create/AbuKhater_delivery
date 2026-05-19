@@ -151,6 +151,7 @@ export const supabaseService = {
         notes: row.notes || '',
         paymentProof: row.payment_proof_url || null,
         status: row.status || 'pending',
+        deposit: row.deposit_amount || 50,
         timestamp: row.created_at || new Date().toISOString()
       }));
     } catch (err) {
@@ -285,6 +286,7 @@ export const supabaseService = {
           guests_count: resData.guests,
           location_type: resData.type || resData.locationType,
           notes: resData.notes,
+          deposit_amount: resData.deposit || 50,
           status: 'pending'
         }])
         .select();
