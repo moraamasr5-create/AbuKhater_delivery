@@ -87,7 +87,7 @@ const PilotManagement = () => {
   const onAddPilot = async (e) => {
     e.preventDefault();
     if (!newPilotName || !newPilotPhone) return;
-    
+
     setIsSubmitting(true);
     const result = await addNewPilot({
       name: newPilotName,
@@ -194,51 +194,51 @@ const PilotManagement = () => {
         ) : (
           pilots.map(pilot => (
             <div key={pilot.id} className="glass-card hover-scale" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: `4px solid ${pilot.shiftStatus === 'open' ? '#10b981' : 'var(--border)'}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h4 style={{ fontSize: '1.2rem', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {pilot.name}
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: pilot.shiftStatus === 'open' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', color: pilot.shiftStatus === 'open' ? '#10b981' : 'var(--text-muted)' }}>
-                    {pilot.shiftStatus === 'open' ? 'متصل 🟢' : 'غير متصل ⚪'}
-                  </span>
-                </h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{pilot.phone}</p>
-              </div>
-            </div>
-
-            <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', gap: '8px' }}>
-              <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الوردية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12}/> {pilot.shift || 'غير محدد'}</div></div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <button 
-                  onClick={() => handleReveal(pilot.id)}
-                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-muted)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  {revealedPilots[pilot.id] ? 'إخفاء البيانات 🔒' : 'عرض البيانات السرية 🔑'}
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h4 style={{ fontSize: '1.2rem', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {pilot.name}
+                    <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: pilot.shiftStatus === 'open' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', color: pilot.shiftStatus === 'open' ? '#10b981' : 'var(--text-muted)' }}>
+                      {pilot.shiftStatus === 'open' ? 'متصل 🟢' : 'غير متصل ⚪'}
+                    </span>
+                  </h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{pilot.phone}</p>
+                </div>
               </div>
 
-              {revealedPilots[pilot.id] && (
-                <>
-                  <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الموتوسيكل</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberMotor || 'غير مسجل'}</div></div>
-                  <div style={{ gridColumn: '1/-1' }}><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الهوية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberId || 'غير مسجل'}</div></div>
-                </>
-              )}
-            </div>
+              <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', gap: '8px' }}>
+                <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الوردية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {pilot.shift || 'غير محدد'}</div></div>
 
-            <button
-              onClick={() => handleToggleShift(pilot.id, pilot.shiftStatus)}
-              style={{ 
-                width: '100%', display: 'flex', justifyContent: 'center', padding: '12px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s ease',
-                background: pilot.shiftStatus === 'open' ? 'rgba(239, 68, 68, 0.1)' : 'var(--success)', 
-                color: pilot.shiftStatus === 'open' ? 'var(--danger)' : 'white', 
-                border: `1px solid ${pilot.shiftStatus === 'open' ? 'var(--danger)' : 'var(--success)'}` 
-              }}
-            >
-              {pilot.shiftStatus === 'open' ? 'إغلاق الشيفت' : 'فتح الشيفت'}
-            </button>
-          </div>
-        )))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => handleReveal(pilot.id)}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-muted)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    {revealedPilots[pilot.id] ? 'إخفاء البيانات 🔒' : 'عرض البيانات السرية 🔑'}
+                  </button>
+                </div>
+
+                {revealedPilots[pilot.id] && (
+                  <>
+                    <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الموتوسيكل</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberMotor || 'غير مسجل'}</div></div>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>رقم الهوية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{pilot.numberId || 'غير مسجل'}</div></div>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => handleToggleShift(pilot.id, pilot.shiftStatus)}
+                style={{
+                  width: '100%', display: 'flex', justifyContent: 'center', padding: '12px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s ease',
+                  background: pilot.shiftStatus === 'open' ? 'rgba(239, 68, 68, 0.1)' : 'var(--success)',
+                  color: pilot.shiftStatus === 'open' ? 'var(--danger)' : 'white',
+                  border: `1px solid ${pilot.shiftStatus === 'open' ? 'var(--danger)' : 'var(--success)'}`
+                }}
+              >
+                {pilot.shiftStatus === 'open' ? 'إغلاق الشيفت' : 'فتح الشيفت'}
+              </button>
+            </div>
+          )))}
       </div>
     </div>
   );
@@ -1113,7 +1113,7 @@ const ReservationView = () => {
                 </span>
               </h3>
               <p style={{ color: 'var(--accent)', fontWeight: 'bold', margin: '0 0 12px 0' }}>{res.phone}</p>
-              
+
               <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', marginBottom: '12px', gap: '8px' }}>
                 <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>التاريخ</label><div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{res.date}</div></div>
                 <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الوقت</label><div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{res.time}</div></div>
@@ -1135,7 +1135,7 @@ const ReservationView = () => {
 
               <div className="flex" style={{ gap: '10px', marginTop: '16px' }}>
                 {res.status === 'pending' && <button onClick={() => setConfirmingRes(res)} className="btn-primary" style={{ flex: 1, background: 'var(--success)', justifyContent: 'center' }}>تأكيد</button>}
-                <button onClick={() => { if(window.confirm('هل أنت متأكد من حذف الحجز؟')) deleteReservation(res.id); }} style={{ flex: res.status === 'pending' ? 1 : 'none', width: res.status === 'pending' ? 'auto' : '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid var(--danger)', padding: '10px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>حذف</button>
+                <button onClick={() => { if (window.confirm('هل أنت متأكد من حذف الحجز؟')) deleteReservation(res.id); }} style={{ flex: res.status === 'pending' ? 1 : 'none', width: res.status === 'pending' ? 'auto' : '100%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid var(--danger)', padding: '10px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>حذف</button>
               </div>
             </div>
           ))
