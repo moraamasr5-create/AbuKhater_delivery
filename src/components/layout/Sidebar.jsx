@@ -85,21 +85,6 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
             </div>
 
             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                {/* 🔑 إعدادات الأمان للأدمن فقط */}
-                {userRole === 'admin' && (
-                    <button
-                        onClick={() => {
-                            onOpenSecurity();
-                            closeSidebar();
-                        }}
-                        className="btn-primary"
-                        style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
-                    >
-                        <KeyRound size={18} color="var(--accent)" />
-                        <span>إعدادات الأمان</span>
-                    </button>
-                )}
-
                 {/* ⚙️ إدارة الشيفت للمدير والكاشير */}
                 {(userRole === 'admin' || userRole === 'casher') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -146,20 +131,46 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                     </div>
                 )}
 
-                {/* 🚪 زر تسجيل الخروج لجميع الجلسات */}
-                <button
-                    onClick={() => {
-                        if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-                            sessionStorage.removeItem('b_delivery_session_user');
-                            setUserRole('');
-                        }
-                    }}
-                    className="btn-primary"
-                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
-                >
-                    <LogOut size={18} />
-                    <span>تسجيل الخروج</span>
-                </button>
+                {/* 🚪 صف الأزرار السفلية (تسجيل الخروج + مفتاح الأمان الصغير للأدمن) */}
+                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <button
+                        onClick={() => {
+                            if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+                                sessionStorage.removeItem('b_delivery_session_user');
+                                setUserRole('');
+                            }
+                        }}
+                        className="btn-primary"
+                        style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px' }}
+                    >
+                        <LogOut size={18} />
+                        <span>تسجيل الخروج</span>
+                    </button>
+
+                    {userRole === 'admin' && (
+                        <button
+                            onClick={() => {
+                                onOpenSecurity();
+                                closeSidebar();
+                            }}
+                            className="btn-primary"
+                            style={{ 
+                                width: '42px', 
+                                height: '42px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                background: 'rgba(255, 255, 255, 0.05)', 
+                                border: '1px solid var(--border)', 
+                                padding: 0,
+                                flexShrink: 0
+                            }}
+                            title="إعدادات الأمان"
+                        >
+                            <KeyRound size={18} color="var(--accent)" />
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
