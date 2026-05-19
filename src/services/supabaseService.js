@@ -314,6 +314,40 @@ export const supabaseService = {
     }
   },
 
+  // 9. جلب الشكاوى والمقترحات (Feedback)
+  async fetchFeedbacks() {
+    try {
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Supabase fetchFeedbacks error:', error);
+        return [];
+      }
+      return data || [];
+    } catch (err) {
+      console.error('❌ Supabase fetchFeedbacks exception:', err);
+      return [];
+    }
+  },
+
+  async deleteFeedback(id) {
+    try {
+      const { error } = await supabase
+        .from('feedback')
+        .delete()
+        .eq('id', id);
+
+      if (error) console.error('❌ Supabase deleteFeedback error:', error);
+      return !error;
+    } catch (err) {
+      console.error('❌ Supabase deleteFeedback exception:', err);
+      return false;
+    }
+  },
+
   // 8. Realtime Subscriptions
   subscribeToOrders(callback) {
     return supabase

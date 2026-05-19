@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut } from 'lucide-react';
+import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare, Utensils } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
@@ -15,6 +15,8 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
         { id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['admin', 'casher', 'driver'] },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
         { id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['admin', 'casher'], special: true },
+        { id: 'kitchen', label: 'التحكم في المطبخ', icon: Utensils, roles: ['admin', 'casher'] },
+        { id: 'feedback', label: 'الشكاوى والمقترحات', icon: MessageSquare, roles: ['admin', 'casher'] },
         { id: 'reports', label: 'التقارير', icon: BarChart3, roles: ['admin'] },
     ];
 
