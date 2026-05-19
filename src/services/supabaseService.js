@@ -251,6 +251,22 @@ export const supabaseService = {
     }
   },
 
+  // 6.1. إعادة تعيين حالة جميع الطيارين للكل (إغلاق الوردية)
+  async resetAllDriversStatus() {
+    try {
+      const { error } = await supabase
+        .from('delivery')
+        .update({ status: false })
+        .neq('id', 0); // resets all drivers
+
+      if (error) {
+        console.error('❌ Supabase resetAllDriversStatus error:', error);
+      }
+    } catch (err) {
+      console.error('❌ Supabase resetAllDriversStatus exception:', err);
+    }
+  },
+
   // 7. حفظ تقرير الوردية (Shift Report)
   async saveShiftReport(reportData) {
     try {
