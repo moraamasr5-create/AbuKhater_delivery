@@ -104,7 +104,7 @@ export const supabaseService = {
       } else if (newStatus === 'failed_delivery') {
         dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
       }
-      
+
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
       const updatePayload = { status: dbStatus, ...extraFields };
       let query = supabase.from('orders').update(updatePayload);
@@ -151,7 +151,7 @@ export const supabaseService = {
         notes: row.notes || '',
         paymentProof: row.payment_proof_url || null,
         status: row.status || 'pending',
-        deposit: row.deposit_amount || 50,
+        deposit: row.deposit_amount || 100,
         timestamp: row.created_at || new Date().toISOString()
       }));
     } catch (err) {
@@ -213,7 +213,7 @@ export const supabaseService = {
     try {
       const shiftStr = driverData.shift || '';
       const parts = shiftStr.split('-');
-      
+
       const { data, error } = await supabase
         .from('delivery')
         .insert([{
@@ -248,22 +248,6 @@ export const supabaseService = {
       }
     } catch (err) {
       console.error('❌ Supabase updateDriverStatus exception:', err);
-    }
-  },
-
-  // 6.1. إعادة تعيين حالة جميع الطيارين للكل (إغلاق الوردية)
-  async resetAllDriversStatus() {
-    try {
-      const { error } = await supabase
-        .from('delivery')
-        .update({ status: false })
-        .neq('id', 0); // resets all drivers
-
-      if (error) {
-        console.error('❌ Supabase resetAllDriversStatus error:', error);
-      }
-    } catch (err) {
-      console.error('❌ Supabase resetAllDriversStatus exception:', err);
     }
   },
 

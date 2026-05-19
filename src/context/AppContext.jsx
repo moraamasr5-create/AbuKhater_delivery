@@ -30,7 +30,7 @@ const mergePilots = (prevPilots, fetchedPilots) => {
   const mergedFetched = fetchedPilots.map(fp => {
     const existing = prevPilots.find(p => p.id === fp.id);
     if (!existing) return fp;
-    const LOCAL_PILOT_FIELDS = ['ordersCount', 'totalMinutes', 'balance', 'state', 'lastReturnTime', 'shiftUsed', 'lastOpenedAt'];
+    const LOCAL_PILOT_FIELDS = ['ordersCount', 'totalMinutes', 'balance', 'shiftStatus', 'state', 'lastReturnTime', 'shiftUsed', 'lastOpenedAt'];
     const mergedFields = {};
     LOCAL_PILOT_FIELDS.forEach(f => {
       if (existing[f] !== undefined) {
@@ -164,7 +164,7 @@ export const AppProvider = ({ children }) => {
           setOrders(prev => {
             const newOrdersForAudio = fetchedOrders.filter(fo => {
               const notInPrev = !prev.some(o => (o.originalId || o.id) === fo.originalId);
-              const isRecentlyCreated = fo.timestamp && 
+              const isRecentlyCreated = fo.timestamp &&
                 (Date.now() - new Date(fo.timestamp).getTime()) < 3 * 60 * 1000;
               return notInPrev && isRecentlyCreated;
             });
@@ -181,10 +181,9 @@ export const AppProvider = ({ children }) => {
               if (!existing) return fo;
 
               const isPending = pendingUpdatesRef.current.has(String(fo.supabaseId)) || pendingUpdatesRef.current.has(String(fo.originalId));
-              const localIsNewer = existing.confirmedAt || existing.assignedAt || existing.startTime || existing.cancelledAt;
-              const isTerminalRemote = ['cancelled', 'completed', 'failed_delivery'].includes(fo.status);
+              const localIsNewer = existing.confirmedAt || existing.assignedAt || existing.startTime;
 
-              const mergedStatus = isPending ? existing.status : (isTerminalRemote ? fo.status : (localIsNewer ? existing.status : fo.status));
+              const mergedStatus = isPending ? existing.status : (localIsNewer ? existing.status : fo.status);
 
               const localFields = {};
               LOCAL_ONLY_FIELDS.forEach(f => {
@@ -238,7 +237,7 @@ export const AppProvider = ({ children }) => {
     setPilots(prev => {
       let changed = false;
       const updated = prev.map(p => {
-        const finishedCount = orders.filter(o => String(o.pilotId) === String(p.id) && o.status === 'completed').length;
+        const finishedCount = orders.filter(o => o.pilotId === p.id && o.status === 'completed').length;
         if (p.ordersCount !== finishedCount) {
           changed = true;
           return { ...p, ordersCount: finishedCount };
@@ -303,7 +302,6 @@ export const AppProvider = ({ children }) => {
       status: 'open'
     };
     setCurrentShift(newShift);
-    supabaseService.resetAllDriversStatus();
     // Reset pilots for new shift: Available, No Orders, Last Return = Now (Start of Queue)
     setPilots(prev => prev.map(p => ({
       ...p,
@@ -336,7 +334,7 @@ export const AppProvider = ({ children }) => {
       return false;
     }
 
-    const stats = activeStatsValue;
+    const stats = activeStats();
 
     const snapshot = {
       ...currentShift,
@@ -370,7 +368,6 @@ export const AppProvider = ({ children }) => {
 
     setOrders([]);
     setCurrentShift(null);
-    supabaseService.resetAllDriversStatus();
     setPilots(prev => prev.map(p => ({ ...p, shiftStatus: 'closed', state: 'available', balance: 0, totalMinutes: 0, shiftUsed: false, lastOpenedAt: null })));
     return true;
   };
@@ -487,7 +484,7 @@ export const AppProvider = ({ children }) => {
         ? { ...o, status: 'driver_assigned', pilotId, assignedAt: getSafeISOTime() }
         : o
     ));
-    const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
+    const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { pilot_id: String(pilotId), pilot_name: pilotName });
@@ -507,7 +504,7 @@ export const AppProvider = ({ children }) => {
 
     // Mark Pilot as OUT
     setPilots(prev => prev.map(p =>
-      String(p.id) === String(order.pilotId)
+      p.id === order.pilotId
         ? { ...p, state: 'out' }
         : p
     ));
@@ -533,13 +530,14 @@ export const AppProvider = ({ children }) => {
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
       setPilots(prev => prev.map(p => {
-        if (String(p.id) === String(order.pilotId)) {
-          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
+        if (p.id === order.pilotId) {
+          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
           const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
             state: nextState,
+            ordersCount: (p.ordersCount || 0) + 1,
             ...returnTimeUpdates
           };
         }
@@ -567,8 +565,8 @@ export const AppProvider = ({ children }) => {
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
       setPilots(prev => prev.map(p => {
-        if (String(p.id) === String(order.pilotId)) {
-          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
+        if (p.id === order.pilotId) {
+          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
           const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
@@ -588,7 +586,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const togglePilotShift = async (pilotId) => {
-    const pilot = pilots.find(p => String(p.id) === String(pilotId));
+    const pilot = pilots.find(p => p.id === pilotId);
     if (!pilot) return;
 
     const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
@@ -603,7 +601,7 @@ export const AppProvider = ({ children }) => {
 
     // Optimistically update UI
     setPilots(prev => prev.map(p => {
-      if (String(p.id) === String(pilotId)) {
+      if (p.id === pilotId) {
         const now = getNormalizedNow();
         let sessionMinutes = 0;
         if (newStatus === 'closed' && p.lastOpenedAt) {
@@ -629,13 +627,13 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
-  const activeStatsValue = useMemo(() => {
+  const activeStats = () => {
     const finishedOrders = orders.filter(o => o.status === 'completed');
     const failedOrders = orders.filter(o => o.status === 'failed_delivery');
 
     const pilotPerformance = pilots.map(p => {
-      const pOrders = finishedOrders.filter(o => String(o.pilotId) === String(p.id));
-      const pFailed = failedOrders.filter(o => String(o.pilotId) === String(p.id));
+      const pOrders = finishedOrders.filter(o => o.pilotId === p.id);
+      const pFailed = failedOrders.filter(o => o.pilotId === p.id);
 
       // Calculate current active minutes if still open
       const currentActiveSession = (p.shiftStatus === 'open' && p.lastOpenedAt)
@@ -732,7 +730,7 @@ export const AppProvider = ({ children }) => {
         pendingCount: reservations.filter(r => r.status === 'pending').length
       }
     };
-  }, [orders, pilots, reservations]);
+  };
 
   const addReservation = async (resData) => {
     // Save to Supabase
@@ -812,7 +810,7 @@ export const AppProvider = ({ children }) => {
       openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot,
       addReservation, confirmReservation, deleteReservation,
       isShiftOpen: currentShift?.status === 'open',
-      activeStats: activeStatsValue,
+      activeStats: activeStats(),
       assignPilot, startDelivery, getSuggestedPilot,
       sendToN8N, syncExternalOrders
     }}>

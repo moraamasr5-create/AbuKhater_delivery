@@ -113,7 +113,7 @@ const OrderInbox = ({ onReedit }) => {
         }
 
         // Validate pilot status
-        const selectedPilotObj = pilots.find(p => String(p.id) === String(pilotId));
+        const selectedPilotObj = pilots.find(p => p.id === pilotId);
         if (selectedPilotObj && selectedPilotObj.state === 'out') {
             alert('هذا الطيار في رحلة توصيل حالياً ولا يمكن إسناد طلب جديد له 🚫');
             return;
@@ -122,7 +122,7 @@ const OrderInbox = ({ onReedit }) => {
         assignPilot(orderId, pilotId);
 
         // Find pilot name for print
-        const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
+        const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
         // Need to pass order object, but state might not be updated yet. Use current order data + new pilot.
         const order = orders.find(o => o.id === orderId);
         if (order) handlePrint({ ...order, pilotId }, pilotName);
@@ -510,7 +510,7 @@ const OrderInbox = ({ onReedit }) => {
                                         {order.status === 'driver_assigned' && (
                                             <div style={{ textAlign: 'center' }}>
                                                 <div style={{ marginBottom: '8px', fontSize: '0.9rem' }}>
-                                                    الطيار: <strong>{pilots.find(p => String(p.id) === String(order.pilotId))?.name}</strong>
+                                                    الطيار: <strong>{pilots.find(p => p.id === order.pilotId)?.name}</strong>
                                                 </div>
                                                 <button
                                                     onClick={() => startDelivery(order.id)}

@@ -122,7 +122,7 @@ const ReportsView = () => {
   const getPilotOrders = (pilotId) => {
     // Filter orders for the current shift and specific pilot (Only completed or failed)
     return orders
-      .filter(o => String(o.pilotId) === String(pilotId) && (o.status === 'completed' || o.status === 'failed_delivery'))
+      .filter(o => o.pilotId === pilotId && (o.status === 'completed' || o.status === 'failed_delivery'))
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   };
 
