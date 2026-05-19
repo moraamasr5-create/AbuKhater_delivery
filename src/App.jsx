@@ -1471,8 +1471,7 @@ function App() {
     <div className="layout" dir="rtl">
       {/* Mobile Menu Toggle */}
       <button className="menu-toggle" onClick={toggleSidebar}>
-        <Menu size={20} />
-        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>☰</span>
+        <Menu size={22} />
       </button>
 
       {/* Overlay: click outside closes menu */}
