@@ -447,8 +447,8 @@ const OrderInbox = ({ onReedit }) => {
 
                                     {/* 3. Workflow Action Area */}
                                     <div>
-                                        {/* Stage 1: Pending -> Confirm (Admin Only) */}
-                                        {(order.status === 'pending' || order.status === 'pending_timer') && userRole === 'admin' && (
+                                        {/* Stage 1: Pending -> Confirm (Admin/Casher) */}
+                                        {(order.status === 'pending' || order.status === 'pending_timer') && (userRole === 'admin' || userRole === 'casher') && (
                                             <div style={{ display: 'flex', gap: '10px' }}>
                                                 {isInGracePeriod ? (
                                                     <button
@@ -471,8 +471,8 @@ const OrderInbox = ({ onReedit }) => {
                                             </div>
                                         )}
 
-                                        {/* Stage 2: Waiting Driver -> Assign (Admin Only) */}
-                                        {order.status === 'waiting_driver' && userRole === 'admin' && (
+                                        {/* Stage 2: Waiting Driver -> Assign (Admin/Casher) */}
+                                        {order.status === 'waiting_driver' && (userRole === 'admin' || userRole === 'casher') && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                 {suggestedPilot && (
                                                     <div style={{ fontSize: '0.8rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -522,8 +522,8 @@ const OrderInbox = ({ onReedit }) => {
                                             </div>
                                         )}
 
-                                        {/* Stage 4: Out -> Complete/Fail (Driver View) */}
-                                        {order.status === 'active' && userRole === 'driver' && (
+                                        {/* Stage 4: Out -> Complete/Fail (Driver View or Admin/Casher Control) */}
+                                        {order.status === 'active' && (userRole === 'admin' || userRole === 'casher' || userRole === 'driver') && (
                                             <div style={{ display: 'flex', gap: '10px' }}>
                                                 <button
                                                     onClick={() => completeOrder(order.id)}

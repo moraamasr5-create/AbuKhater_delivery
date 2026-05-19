@@ -171,44 +171,69 @@ const Login = ({ onLoginSuccess }) => {
 
       {/* Embedded Styles for Login Screen */}
       <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
+
+        .login-viewport * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        .login-viewport button {
+          outline: none;
+          -webkit-tap-highlight-color: transparent;
+          font-family: inherit;
+        }
+
         .login-viewport {
           position: fixed;
           top: 0;
           left: 0;
           width: 100vw;
           height: 100vh;
+          height: 100dvh;
           background: #090d16;
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 99999;
-          font-family: 'Outfit', 'Cairo', sans-serif;
+          font-family: 'Cairo', 'Outfit', sans-serif;
           overflow-y: auto;
-          padding: 12px;
+          padding: 16px;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
 
         .login-bg-glow {
           position: absolute;
           border-radius: 50%;
-          filter: blur(100px);
+          filter: blur(120px);
           opacity: 0.15;
           z-index: 1;
+          pointer-events: none;
+        }
+
+        @keyframes float-glow {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-20px) scale(1.1); }
         }
 
         .login-glow-1 {
-          width: 300px;
-          height: 300px;
+          width: 320px;
+          height: 320px;
           background: var(--primary, #3b82f6);
           top: -50px;
           right: -50px;
+          animation: float-glow 8s ease-in-out infinite;
         }
 
         .login-glow-2 {
-          width: 400px;
-          height: 400px;
+          width: 420px;
+          height: 420px;
           background: var(--accent, #10b981);
           bottom: -100px;
           left: -100px;
+          animation: float-glow 12s ease-in-out infinite alternate;
         }
 
         .login-container {
@@ -217,11 +242,12 @@ const Login = ({ onLoginSuccess }) => {
           width: 100%;
           max-width: 360px;
           padding: 24px 20px;
-          background: rgba(17, 24, 39, 0.7);
+          background: rgba(10, 15, 30, 0.75);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 24px;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           margin: auto;
         }
 
@@ -236,6 +262,12 @@ const Login = ({ onLoginSuccess }) => {
           align-items: center;
           justify-content: center;
           box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+          animation: pulse-ring 3s infinite;
+        }
+
+        @keyframes pulse-ring {
+          0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); border-color: rgba(255, 255, 255, 0.1); }
+          50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.3); }
         }
 
         .login-logo {
@@ -287,7 +319,7 @@ const Login = ({ onLoginSuccess }) => {
         }
 
         .login-pin-display {
-          background: rgba(0, 0, 0, 0.2);
+          background: rgba(0, 0, 0, 0.25);
           border: 1px solid rgba(255, 255, 255, 0.05);
           border-radius: 12px;
           padding: 12px;
@@ -338,8 +370,8 @@ const Login = ({ onLoginSuccess }) => {
 
         .login-num-btn {
           height: 46px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
           border-radius: 10px;
           color: white;
           font-size: 1.3rem;
@@ -350,21 +382,31 @@ const Login = ({ onLoginSuccess }) => {
           justify-content: center;
           transition: all 0.15s ease;
           user-select: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .login-num-btn:active {
-          background: rgba(255, 255, 255, 0.12);
-          transform: scale(0.95);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         .login-num-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.12);
+          color: #60a5fa;
+        }
+
+        .login-num-btn:active {
+          background: rgba(59, 130, 246, 0.2);
+          border-color: #3b82f6;
+          transform: scale(0.92);
+          box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
         }
 
         .login-num-btn.clear-btn:hover {
+          color: #f87171 !important;
           background: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .login-num-btn.clear-btn:active {
+          background: rgba(239, 68, 68, 0.2);
+          border-color: #ef4444;
         }
 
         .login-num-btn.delete-btn {
@@ -379,7 +421,7 @@ const Login = ({ onLoginSuccess }) => {
         .login-submit-btn {
           width: 100%;
           height: 46px;
-          background: var(--primary, #3b82f6);
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
           color: white;
           border: none;
           border-radius: 12px;
@@ -390,14 +432,18 @@ const Login = ({ onLoginSuccess }) => {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
           transition: all 0.2s;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         .login-submit-btn:hover:not(:disabled) {
-          background: #2563eb;
-          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-          transform: translateY(-1px);
+          background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+          box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .login-submit-btn:active:not(:disabled) {
+          transform: scale(0.98);
         }
 
         .login-submit-btn:disabled {
@@ -405,6 +451,7 @@ const Login = ({ onLoginSuccess }) => {
           color: rgba(255, 255, 255, 0.2);
           box-shadow: none;
           cursor: not-allowed;
+          text-shadow: none;
         }
 
         /* Animations */

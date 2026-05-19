@@ -97,14 +97,14 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                     </button>
                 )}
 
-                {/* ⚙️ إدارة الشيفت للمدير فقط */}
-                {userRole === 'admin' && (
+                {/* ⚙️ إدارة الشيفت للمدير والكاشير */}
+                {(userRole === 'admin' || userRole === 'casher') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {!isShiftOpen ? (
                             <button
                                 onClick={() => {
-                                    const correctPwd = localStorage.getItem('b_delivery_password_admin') || '8080';
-                                    const pwd = prompt('أدخل كلمة مرور المشرف لفتح الوردية:');
+                                    const correctPwd = localStorage.getItem(`b_delivery_password_${userRole}`) || '8080';
+                                    const pwd = prompt('أدخل كلمة المرور لفتح الوردية:');
                                     if (pwd === correctPwd) {
                                         openShift();
                                         closeSidebar();
@@ -124,8 +124,8 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                                         closeShift(true);
                                         closeSidebar();
                                     } else {
-                                        const correctPwd = localStorage.getItem('b_delivery_password_admin') || '8080';
-                                        const pwd = prompt('أدخل كلمة مرور المشرف لإغلاق الوردية:');
+                                        const correctPwd = localStorage.getItem(`b_delivery_password_${userRole}`) || '8080';
+                                        const pwd = prompt('أدخل كلمة المرور لإغلاق الوردية:');
                                         if (pwd === correctPwd) {
                                             closeShift(false);
                                             closeSidebar();
