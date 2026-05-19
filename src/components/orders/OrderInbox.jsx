@@ -220,6 +220,13 @@ const OrderInbox = ({ onReedit }) => {
                                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                             {new Date(order.timestamp).toLocaleTimeString('ar-EG')}
                                         </p>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                            {order.confirmedAt && <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>✔️ {new Date(order.confirmedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                            {order.assignedAt && <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>👤 {new Date(order.assignedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                            {order.startTime && <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>🚚 {new Date(order.startTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                            {order.deliveredAt && <span style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', padding: '2px 6px', borderRadius: '4px' }}>🏁 {new Date(order.deliveredAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                            {order.failedAt && <span style={{ background: 'rgba(248, 113, 113, 0.1)', color: '#f87171', padding: '2px 6px', borderRadius: '4px' }}>❌ {new Date(order.failedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                        </div>
 
                                         {/* 📍 Zone & Distance Badge */}
                                         {isOnline && normalized.lat && normalized.lng && (

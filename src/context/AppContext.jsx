@@ -26,7 +26,23 @@ const sendToN8N = async (payload, type) => {
   }
 };
 
-// Removed updateExternalOrderStatus from here to move it inside AppProvider
+const mergePilots = (prevPilots, fetchedPilots) => {
+  const mergedFetched = fetchedPilots.map(fp => {
+    const existing = prevPilots.find(p => p.id === fp.id);
+    if (!existing) return fp;
+    const LOCAL_PILOT_FIELDS = ['ordersCount', 'totalMinutes', 'balance', 'shiftStatus', 'state', 'lastReturnTime', 'shiftUsed', 'lastOpenedAt'];
+    const mergedFields = {};
+    LOCAL_PILOT_FIELDS.forEach(f => {
+      if (existing[f] !== undefined) {
+        mergedFields[f] = existing[f];
+      }
+    });
+    return { ...fp, ...mergedFields };
+  });
+
+  const localOnly = prevPilots.filter(p => !fetchedPilots.some(fp => fp.id === p.id));
+  return [...mergedFetched, ...localOnly];
+};
 
 export const AppProvider = ({ children }) => {
   // 🔴 نظام الأدوار (Role System)
@@ -141,7 +157,7 @@ export const AppProvider = ({ children }) => {
           supabaseService.fetchReservations()
         ]);
 
-        if (fetchedPilots) setPilots(fetchedPilots);
+        if (fetchedPilots) setPilots(prev => mergePilots(prev, fetchedPilots));
         if (fetchedRes) setReservations(fetchedRes);
 
         if (fetchedOrders && fetchedOrders.length > 0) {
@@ -195,7 +211,9 @@ export const AppProvider = ({ children }) => {
     });
 
     pilotsSub = supabaseService.subscribeToDrivers(() => {
-      supabaseService.fetchDeliveryDrivers().then(setPilots);
+      supabaseService.fetchDeliveryDrivers().then(fetched => {
+        if (fetched) setPilots(prev => mergePilots(prev, fetched));
+      });
     });
 
     resSub = supabaseService.subscribeToReservations(() => {
@@ -212,6 +230,23 @@ export const AppProvider = ({ children }) => {
       if (resSub) resSub.unsubscribe();
     };
   }, [currentShift]);
+
+  // Keep pilots' ordersCount synchronized with the completed orders of the current shift
+  useEffect(() => {
+    if (!currentShift) return;
+    setPilots(prev => {
+      let changed = false;
+      const updated = prev.map(p => {
+        const finishedCount = orders.filter(o => o.pilotId === p.id && o.status === 'completed').length;
+        if (p.ordersCount !== finishedCount) {
+          changed = true;
+          return { ...p, ordersCount: finishedCount };
+        }
+        return p;
+      });
+      return changed ? updated : prev;
+    });
+  }, [orders, currentShift]);
 
   const syncExternalOrders = async () => {
     if (currentShift?.status !== 'open') return;
@@ -243,10 +278,16 @@ export const AppProvider = ({ children }) => {
     const available = pilots.filter(p => p.shiftStatus === 'open' && p.state === 'available');
     if (available.length === 0) return null;
 
+    const getTime = (timeStr) => {
+      if (!timeStr) return 0;
+      const parsed = new Date(timeStr).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
     // 2. Sort by Last Return Time (Oldest First - FIFO), then by Order Count (Balancing)
     return available.sort((a, b) => {
-      const timeA = a.lastReturnTime ? new Date(a.lastReturnTime).getTime() : 0;
-      const timeB = b.lastReturnTime ? new Date(b.lastReturnTime).getTime() : 0;
+      const timeA = getTime(a.lastReturnTime);
+      const timeB = getTime(b.lastReturnTime);
       if (timeA !== timeB) return timeA - timeB; // First back
       return (a.ordersCount || 0) - (b.ordersCount || 0); // Least orders
     })[0];
@@ -479,9 +520,10 @@ export const AppProvider = ({ children }) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status === 'completed') return;
 
+    const nowTime = getSafeISOTime();
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'completed', endTime: getSafeISOTime() }
+        ? { ...o, status: 'completed', endTime: nowTime, deliveredAt: nowTime }
         : o
     ));
 
@@ -489,12 +531,12 @@ export const AppProvider = ({ children }) => {
     if (order.pilotId) {
       setPilots(prev => prev.map(p =>
         p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: getSafeISOTime(), ordersCount: (p.ordersCount || 0) + 1 }
+          ? { ...p, state: 'available', lastReturnTime: nowTime, ordersCount: (p.ordersCount || 0) + 1 }
           : p
       ));
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
-    sendToN8N({ ...order, status: 'completed' }, 'ORDER_COMPLETE');
+    sendToN8N({ ...order, status: 'completed', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'completed');
     }
@@ -504,9 +546,10 @@ export const AppProvider = ({ children }) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status === 'failed_delivery') return;
 
+    const nowTime = getSafeISOTime();
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'failed_delivery', failureReason: reason, endTime: getSafeISOTime() }
+        ? { ...o, status: 'failed_delivery', failureReason: reason, endTime: nowTime, failedAt: nowTime }
         : o
     ));
 
@@ -514,12 +557,12 @@ export const AppProvider = ({ children }) => {
     if (order.pilotId) {
       setPilots(prev => prev.map(p =>
         p.id === order.pilotId
-          ? { ...p, state: 'available', lastReturnTime: getSafeISOTime() } // Returned, but maybe didn't complete? Keep count same or inc? I'll keep it same as effort isn't 'gain'.
+          ? { ...p, state: 'available', lastReturnTime: nowTime }
           : p
       ));
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
-    sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason }, 'ORDER_FAIL');
+    sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason, endTime: nowTime, failedAt: nowTime }, 'ORDER_FAIL');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'failed_delivery', reason);
     }
@@ -647,7 +690,12 @@ export const AppProvider = ({ children }) => {
 
     const delays = orders
       .filter(o => o.status === 'pending' || o.status === 'active')
-      .map(o => calculateDelayMinutes(o.timestamp));
+      .map(o => {
+        if (o.status === 'active' && o.startTime) {
+          return calculateDelayMinutes(o.startTime);
+        }
+        return calculateDelayMinutes(o.timestamp);
+      });
 
     const averageDelay = delays.length > 0
       ? Math.floor(delays.reduce((a, b) => a + b, 0) / delays.length)

@@ -361,7 +361,7 @@ const DashboardView = () => {
     return diff;
   };
 
-  const delayedOrders = activeOrders.filter(o => getElapsedTime(o.timestamp) > 40);
+  const delayedOrders = activeOrders.filter(o => getElapsedTime(o.startTime || o.timestamp) > 40);
 
   const handleReassign = (orderId, newPilotId) => {
     if (window.confirm('هل أنت متأكد من تغيير الطيار لهذا الطلب؟')) {
@@ -488,7 +488,7 @@ const DashboardView = () => {
                 </thead>
                 <tbody>
                   {ordersByPilot[viewPilotId].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map(order => {
-                    const elapsed = getElapsedTime(order.timestamp);
+                    const elapsed = getElapsedTime(order.startTime || order.timestamp);
                     const isDelayed = elapsed > 40;
 
                     return (
