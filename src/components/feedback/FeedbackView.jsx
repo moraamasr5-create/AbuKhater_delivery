@@ -44,7 +44,7 @@ const FeedbackView = () => {
   const getNormalizedFeedback = (row) => {
     return {
       id: row.id,
-      name: full_name
+      name: row.full_name
         || 'عميل غير مسجل',
       phone: row.phone || '',
       type: (row.type || 'message').toLowerCase().trim(),
