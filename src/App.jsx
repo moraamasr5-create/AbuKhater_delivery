@@ -340,18 +340,19 @@ const DashboardView = () => {
   // Group active orders by pilot
   const activeOrders = orders.filter(o => o.status === 'active');
   const ordersByPilot = activeOrders.reduce((acc, o) => {
-    if (!acc[o.pilotId]) acc[o.pilotId] = [];
-    acc[o.pilotId].push(o);
+    const key = String(o.pilotId);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(o);
     return acc;
   }, {});
 
-  const pilotsWithOrders = pilots.filter(p => ordersByPilot[p.id]);
+  const pilotsWithOrders = pilots.filter(p => ordersByPilot[String(p.id)]);
 
   // Set default view pilot if none selected and pilots exist, or reset if pilot is no longer outside
   useEffect(() => {
     if (pilotsWithOrders.length === 0) {
       setViewPilotId(null);
-    } else if (!viewPilotId || !pilotsWithOrders.some(p => p.id === viewPilotId)) {
+    } else if (!viewPilotId || !pilotsWithOrders.some(p => String(p.id) === String(viewPilotId))) {
       setViewPilotId(pilotsWithOrders[0].id);
     }
   }, [pilotsWithOrders, viewPilotId]);

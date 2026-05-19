@@ -250,7 +250,7 @@ export const AppProvider = ({ children }) => {
     setPilots(prev => {
       let changed = false;
       const updated = prev.map(p => {
-        const finishedCount = orders.filter(o => o.pilotId === p.id && o.status === 'completed').length;
+        const finishedCount = orders.filter(o => String(o.pilotId) === String(p.id) && o.status === 'completed').length;
         if (p.ordersCount !== finishedCount) {
           changed = true;
           return { ...p, ordersCount: finishedCount };
@@ -497,7 +497,7 @@ export const AppProvider = ({ children }) => {
         ? { ...o, status: 'driver_assigned', pilotId, assignedAt: getSafeISOTime() }
         : o
     ));
-    const pilotName = pilots.find(p => p.id === pilotId)?.name || 'Unknown';
+    const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { pilot_id: String(pilotId), pilot_name: pilotName });
@@ -517,7 +517,7 @@ export const AppProvider = ({ children }) => {
 
     // Mark Pilot as OUT
     setPilots(prev => prev.map(p =>
-      p.id === order.pilotId
+      String(p.id) === String(order.pilotId)
         ? { ...p, state: 'out' }
         : p
     ));
@@ -543,14 +543,13 @@ export const AppProvider = ({ children }) => {
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
       setPilots(prev => prev.map(p => {
-        if (p.id === order.pilotId) {
-          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
+        if (String(p.id) === String(order.pilotId)) {
+          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
           const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
             state: nextState,
-            ordersCount: (p.ordersCount || 0) + 1,
             ...returnTimeUpdates
           };
         }
@@ -578,8 +577,8 @@ export const AppProvider = ({ children }) => {
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
       setPilots(prev => prev.map(p => {
-        if (p.id === order.pilotId) {
-          const otherActive = orders.some(o => o.pilotId === p.id && o.status === 'active' && o.id !== orderId);
+        if (String(p.id) === String(order.pilotId)) {
+          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
           const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
@@ -599,7 +598,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const togglePilotShift = async (pilotId) => {
-    const pilot = pilots.find(p => p.id === pilotId);
+    const pilot = pilots.find(p => String(p.id) === String(pilotId));
     if (!pilot) return;
 
     const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
@@ -614,7 +613,7 @@ export const AppProvider = ({ children }) => {
 
     // Optimistically update UI
     setPilots(prev => prev.map(p => {
-      if (p.id === pilotId) {
+      if (String(p.id) === String(pilotId)) {
         const now = getNormalizedNow();
         let sessionMinutes = 0;
         if (newStatus === 'closed' && p.lastOpenedAt) {
@@ -645,8 +644,8 @@ export const AppProvider = ({ children }) => {
     const failedOrders = orders.filter(o => o.status === 'failed_delivery');
 
     const pilotPerformance = pilots.map(p => {
-      const pOrders = finishedOrders.filter(o => o.pilotId === p.id);
-      const pFailed = failedOrders.filter(o => o.pilotId === p.id);
+      const pOrders = finishedOrders.filter(o => String(o.pilotId) === String(p.id));
+      const pFailed = failedOrders.filter(o => String(o.pilotId) === String(p.id));
 
       // Calculate current active minutes if still open
       const currentActiveSession = (p.shiftStatus === 'open' && p.lastOpenedAt)
