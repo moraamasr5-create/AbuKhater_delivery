@@ -316,3 +316,131 @@ button {
     margin: 0 auto;
   }
 }
+
+/* ==========================================
+   🖨️ Thermal Print Specific Global Rules
+   ========================================== */
+
+/* Utility to hide elements during printing */
+.no-print {
+  display: none !important;
+}
+
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@media print {
+  /* Hide main navigation, sidebars, dashboard layout and backgrounds */
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 80mm !important;
+  }
+
+  /* Reset all height restrictions to prevent clipping or extra pages */
+  html, body, #root, .layout, .main-content, .app-container {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* When printing, hide all non-print elements */
+  .sidebar, .menu-toggle, .sidebar-overlay, .btn-primary, button, .stats-container, .header-actions, .no-print {
+    display: none !important;
+  }
+  
+  /* Avoid page breaks inside sections */
+  .card, .receipt-container, tr, .solid-line, .dashed-line {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+/* ==========================================
+   🖥️ Thermal Print Mode On-Screen Simulator CSS
+   ========================================== */
+body.thermal-print-active .thermal-preview-container {
+  display: block;
+}
+
+.thermal-receipt-simulator {
+  width: 320px; /* Est. 80mm on screen */
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.15);
+  font-family: 'Cairo', 'Segoe UI', sans-serif;
+  padding: 16px;
+  direction: rtl;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Realistic jagged tear-off edge at the bottom of the simulator */
+.thermal-receipt-simulator::after {
+  content: "";
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(-45deg, #151b2b 3px, transparent 0), linear-gradient(45deg, #151b2b 3px, transparent 0);
+  background-size: 6px 12px;
+}
+
+.thermal-receipt-simulator .header {
+  text-align: center;
+  border-bottom: 2px dashed #000;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.thermal-receipt-simulator .title {
+  font-size: 18px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.thermal-receipt-simulator .subtitle {
+  font-size: 12px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+
+.thermal-receipt-simulator .dashed-line {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.thermal-receipt-simulator .solid-line {
+  border-top: 2px solid #000;
+  margin: 8px 0;
+}
+
+.thermal-receipt-simulator .items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.thermal-receipt-simulator .items-table th, 
+.thermal-receipt-simulator .items-table td {
+  padding: 4px 0;
+  text-align: right;
+}
+
+.thermal-receipt-simulator .items-table th {
+  border-bottom: 1px solid #000;
+  font-weight: 900;
+}

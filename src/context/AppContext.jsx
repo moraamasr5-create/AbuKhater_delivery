@@ -52,6 +52,19 @@ export const AppProvider = ({ children }) => {
     return sessionStorage.getItem('b_delivery_session_user') || '';
   });
 
+  const [isThermalPrintMode, setIsThermalPrintMode] = useState(() => {
+    return localStorage.getItem('is_thermal_print_mode') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('is_thermal_print_mode', isThermalPrintMode);
+    if (isThermalPrintMode) {
+      document.body.classList.add('thermal-print-active');
+    } else {
+      document.body.classList.remove('thermal-print-active');
+    }
+  }, [isThermalPrintMode]);
+
   // حفظ الدور في المتصفح ودور الجلسة
   useEffect(() => {
     if (userRole) {
@@ -820,6 +833,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       orders, pilots, currentShift, dailyReports, auditLogs, reservations,
       userRole, setUserRole, // 🔐 تصدير بيانات الدور لباقي السيستم
+      isThermalPrintMode, setIsThermalPrintMode,
       openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot,
       addReservation, confirmReservation, deleteReservation,
       isShiftOpen: currentShift?.status === 'open',

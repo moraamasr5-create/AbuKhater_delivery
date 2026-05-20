@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Check, X, AlertCircle, UserPlus, RotateCcw, Clock, Bike, RefreshCw, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react';
+import { printerService } from '../../services/printerService';
 import { motion, AnimatePresence } from 'framer-motion'; // 🪄 استيراد مكتبة التحريك لعمل الـ Live Dashboard
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
@@ -26,7 +27,7 @@ const getZone = (dist) => {
 };
 
 const OrderInbox = ({ onReedit }) => {
-    const { orders, pilots, confirmOrder, deleteOrder, cancelOrder, isShiftOpen, assignPilot, startDelivery, completeOrder, failDelivery, getSuggestedPilot, syncExternalOrders, userRole } = useApp();
+    const { orders, pilots, confirmOrder, deleteOrder, cancelOrder, isShiftOpen, assignPilot, startDelivery, completeOrder, failDelivery, getSuggestedPilot, syncExternalOrders, userRole, isThermalPrintMode } = useApp();
     const handleCancel = (id) => {
         const reason = prompt('هل أنت متأكد من إلغاء الطلب؟ يرجى إدخال سبب الإلغاء:');
         if (reason) cancelOrder(id, reason);
@@ -36,6 +37,8 @@ const OrderInbox = ({ onReedit }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [previewImage, setPreviewImage] = useState(null); // 🖼️ حالة عرض الصورة الكبيرة (Modal)
     const [expandedOrderId, setExpandedOrderId] = useState(null); // 🛒 حالة عرض تفاصيل السلة
+    const [selectedPreviewOrderId, setSelectedPreviewOrderId] = useState(null);
+
     const handleManualRefresh = async () => {
         setIsRefreshing(true);
         try {
@@ -56,6 +59,7 @@ const OrderInbox = ({ onReedit }) => {
         }
     });
 
+    const previewOrder = inboxOrders.find(o => o.id === selectedPreviewOrderId) || inboxOrders[0];
     const availablePilots = pilots.filter(p => p.shiftStatus === 'open');
 
     // Effect to handle local countdown
@@ -74,29 +78,12 @@ const OrderInbox = ({ onReedit }) => {
         return () => clearInterval(interval);
     }, [orders]); // Depend on orders to refresh
 
-    const handlePrint = (order, pilotName = 'Not Assigned') => {
-        const printWindow = window.open('', '_blank', 'width=400,height=600');
-        if (!printWindow) return;
-        const itemsHtml = order.items ? order.items.map(i => `<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-weight:bold;"><span>${i.name}</span><span>x${i.count}</span></div>`).join('') : '';
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html dir="rtl">
-            <head><title>Kitchen Ticket #{order.originalId || order.id}</title>
-            <style>body { font-family: 'Courier New', monospace; padding: 20px; width: 80mm; margin: 0 auto; text-align: center; } .header { font-size: 32px; font-weight: 800; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; } .meta { font-size: 14px; margin-bottom: 15px; text-align: right; } .items { border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px; text-align: right; } .footer { font-size: 12px; font-weight: bold; margin-top: 20px; }</style>
-            </head>
-            <body>
-            <div class="header">#{order.originalId || order.id}</div>
-            <div class="meta">
-                <div>العميل: ${order.customerName}</div>
-                <div>التوقيت: ${new Date().toLocaleTimeString('ar-EG')}</div>
-                <div style="margin-top:5px; font-weight:bold; border:1px solid #000; padding:5px; text-align:center;">الطيار: ${pilotName}</div>
-            </div>
-            <div class="items">${itemsHtml || '<p>' + (order.itemsDescription || '') + '</p>'}</div>
-            <div class="footer">نسخة المطبخ (FINAL) - Delivery Logic</div>
-            <script>window.print();window.close();</script>
-            </body></html>`;
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+    const handlePrint = (order, pilotName = null) => {
+        let pName = pilotName;
+        if (!pName && order.pilotId) {
+            pName = pilots.find(p => String(p.id) === String(order.pilotId))?.name || null;
+        }
+        printerService.printKitchenReceipt(order, true, pName);
     };
 
     const handleAssignAndPrint = (orderId) => {
@@ -168,49 +155,67 @@ const OrderInbox = ({ onReedit }) => {
                     <p style={{ color: 'var(--text-muted)' }}>لا توجد طلبات في مرحلة الإعداد</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <AnimatePresence mode="popLayout">
-                        {inboxOrders.map(order => {
-                            const isInGracePeriod = order.status === 'pending_timer';
-                            const timeLeft = auditTimers[order.id] || 0;
-                            const suggestedPilot = order.status === 'waiting_driver' ? getSuggestedPilot() : null;
-                            const isOnline = order.source === 'online' || order.type === 'online' || !!order.customer;
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: (isThermalPrintMode && previewOrder) ? '1fr 340px' : '1fr',
+                    gap: '24px',
+                    alignItems: 'start'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <AnimatePresence mode="popLayout">
+                            {inboxOrders.map(order => {
+                                const isInGracePeriod = order.status === 'pending_timer';
+                                const timeLeft = auditTimers[order.id] || 0;
+                                const suggestedPilot = order.status === 'waiting_driver' ? getSuggestedPilot() : null;
+                                const isOnline = order.source === 'online' || order.type === 'online' || !!order.customer;
 
-                            const normalized = isOnline ? {
-                                name: order.customerName || order.customer?.name || "عميل غير معروف",
-                                phone: order.phone || order.customer?.phone_primary || "غير متوفر",
-                                phone2: order.phone2 || order.customer?.phone2 || null,
-                                address: order.area || order.customer?.address || "No Address",
-                                deliveryFee: order.deliveryFee || order.totals?.delivery_fee || 0,
-                                total: order.total || order.payment?.amount_total || 0,
-                                paymentMethod: order.paymentMethod || order.payment?.method || "unknown",
-                                lat: order.lat || order.lan || null,
-                                lng: order.lng || order.len || null,
-                                screenshot: order.paymentScreenshot || order.screenshot || order.paymentProof || null
-                            } : null;
+                                const normalized = isOnline ? {
+                                    name: order.customerName || order.customer?.name || "عميل غير معروف",
+                                    phone: order.phone || order.customer?.phone_primary || "غير متوفر",
+                                    phone2: order.phone2 || order.customer?.phone2 || null,
+                                    address: order.area || order.customer?.address || "No Address",
+                                    deliveryFee: order.deliveryFee || order.totals?.delivery_fee || 0,
+                                    total: order.total || order.payment?.amount_total || 0,
+                                    paymentMethod: order.paymentMethod || order.payment?.method || "unknown",
+                                    lat: order.lat || order.lan || null,
+                                    lng: order.lng || order.len || null,
+                                    screenshot: order.paymentScreenshot || order.screenshot || order.paymentProof || null
+                                } : null;
 
-                            if (isOnline && normalized.screenshot?.includes("drive.google.com")) {
-                                const match = normalized.screenshot.match(/\/d\/([^\/]+)/);
-                                if (match) normalized.screenshot = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
-                            }
+                                if (isOnline && normalized.screenshot?.includes("drive.google.com")) {
+                                    const match = normalized.screenshot.match(/\/d\/([^\/]+)/);
+                                    if (match) normalized.screenshot = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
+                                }
 
-                            let statusColor = 'var(--border)';
-                            let statusBg = 'transparent';
-                            if (order.status === 'pending') { statusColor = 'var(--warning)'; statusBg = 'rgba(245, 158, 11, 0.05)'; }
-                            if (order.status === 'waiting_driver') { statusColor = 'var(--accent)'; statusBg = 'rgba(16, 185, 129, 0.05)'; }
-                            if (order.status === 'driver_assigned') { statusColor = '#3b82f6'; statusBg = 'rgba(59, 130, 246, 0.05)'; }
+                                let statusColor = 'var(--border)';
+                                let statusBg = 'transparent';
+                                if (order.status === 'pending') { statusColor = 'var(--warning)'; statusBg = 'rgba(245, 158, 11, 0.05)'; }
+                                if (order.status === 'waiting_driver') { statusColor = 'var(--accent)'; statusBg = 'rgba(16, 185, 129, 0.05)'; }
+                                if (order.status === 'driver_assigned') { statusColor = '#3b82f6'; statusBg = 'rgba(59, 130, 246, 0.05)'; }
 
-                            return (
-                                <motion.div
-                                    key={order.id}
-                                    layout // 🪄 تحريك العناصر الأخرى بسلاسة عند حذف عنصر
-                                    initial={{ opacity: 0, x: -20, scale: 0.95 }}
-                                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                                    exit={{ opacity: 0, x: 20, scale: 0.9, transition: { duration: 0.2 } }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                    className={`glass-card order-card order-card-grid ${order.status === 'pending' ? 'pulse-new' : ''}`}
-                                    style={{ padding: '24px', alignItems: 'center', borderLeft: `6px solid ${statusColor}`, background: statusBg, position: 'relative' }}
-                                >
+                                const isSelectedPreview = isThermalPrintMode && previewOrder && previewOrder.id === order.id;
+
+                                return (
+                                    <motion.div
+                                        key={order.id}
+                                        layout // 🪄 تحريك العناصر الأخرى بسلاسة عند حذف عنصر
+                                        initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                                        exit={{ opacity: 0, x: 20, scale: 0.9, transition: { duration: 0.2 } }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                        onClick={() => isThermalPrintMode && setSelectedPreviewOrderId(order.id)}
+                                        className={`glass-card order-card order-card-grid ${order.status === 'pending' ? 'pulse-new' : ''}`}
+                                        style={{
+                                            padding: '24px',
+                                            alignItems: 'center',
+                                            borderLeft: `6px solid ${statusColor}`,
+                                            background: statusBg,
+                                            position: 'relative',
+                                            cursor: isThermalPrintMode ? 'pointer' : 'default',
+                                            border: isSelectedPreview ? '2px solid var(--accent)' : '1px solid var(--border)',
+                                            boxShadow: isSelectedPreview ? '0 0 15px rgba(16, 185, 129, 0.2)' : 'none'
+                                        }}
+                                    >
 
                                     {/* Status Indicator Badge */}
                                     <div style={{ position: 'absolute', top: '12px', right: '12px', background: statusColor, color: '#fff', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', boxShadow: `0 2px 10px ${statusColor}80` }}>
@@ -622,6 +627,124 @@ const OrderInbox = ({ onReedit }) => {
                         })}
                     </AnimatePresence>
                 </div>
+
+                {isThermalPrintMode && previewOrder && (
+                    <div className="no-print" style={{ position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="glass-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                                <span>🖨️ معاينة البون الحراري</span>
+                            </h3>
+                            
+                            <div className="thermal-receipt-simulator">
+                                <div className="header">
+                                    <div className="title">مطعم أبو خاطر</div>
+                                    <div className="subtitle">إدارة وتوصيل الطلبات</div>
+                                    <div className="dashed-line"></div>
+                                    <div className="bold" style={{ fontSize: '15px' }}>فاتورة رقم #{previewOrder.originalId || previewOrder.id}</div>
+                                </div>
+                                
+                                <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <div><strong>التاريخ:</strong> {new Date(previewOrder.timestamp || Date.now()).toLocaleString('ar-EG')}</div>
+                                    <div><strong>العميل:</strong> {previewOrder.customerName || 'عميل'}</div>
+                                    <div><strong>الهاتف:</strong> {previewOrder.phone || 'غير مسجل'}</div>
+                                    {previewOrder.area && <div><strong>العنوان:</strong> {previewOrder.area}</div>}
+                                    <div><strong>الدفع:</strong> {previewOrder.paymentMethod || 'كاش'}</div>
+                                    {previewOrder.pilotId && (
+                                        <div><strong>الطيار:</strong> {pilots.find(p => String(p.id) === String(previewOrder.pilotId))?.name || 'غير معروف'}</div>
+                                    )}
+                                </div>
+                                
+                                <div className="solid-line"></div>
+                                
+                                {previewOrder.items && previewOrder.items.length > 0 ? (
+                                    <table className="items-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'right' }}>الصنف</th>
+                                                <th style={{ width: '30px', textAlign: 'center' }}>العدد</th>
+                                                <th style={{ width: '50px', textAlign: 'left' }}>الإجمالي</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {previewOrder.items.map((item, idx) => (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td>{item.name}</td>
+                                                    <td style={{ textAlign: 'center' }}>{item.count || item.quantity || 1}</td>
+                                                    <td style={{ textAlign: 'left' }}>{((item.count || item.quantity || 1) * (item.price || 0))} ج</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div style={{ fontSize: '11px', margin: '8px 0', whiteSpace: 'pre-wrap' }}>
+                                        <strong>الأصناف:</strong> {previewOrder.itemsDescription || 'لا توجد تفاصيل'}
+                                    </div>
+                                )}
+                                
+                                <div className="solid-line"></div>
+                                
+                                <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>المجموع:</span>
+                                        <span>{previewOrder.subtotal || Math.max(0, previewOrder.total - (previewOrder.deliveryFee || 0))} ج.م</span>
+                                    </div>
+                                    {previewOrder.deliveryFee > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>التوصيل:</span>
+                                            <span>{previewOrder.deliveryFee} ج.م</span>
+                                        </div>
+                                    )}
+                                    {previewOrder.serviceFee > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>الخدمة:</span>
+                                            <span>{previewOrder.serviceFee} ج.م</span>
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '13px', borderTop: '1px solid #000', paddingTop: '4px', marginTop: '2px' }}>
+                                        <span>الإجمالي النهائي:</span>
+                                        <span>{previewOrder.total} ج.م</span>
+                                    </div>
+                                    {Number(previewOrder.paidNow) > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: 'bold' }}>
+                                            <span>المدفوع:</span>
+                                            <span>{previewOrder.paidNow} ج.م</span>
+                                        </div>
+                                    )}
+                                    {Number(previewOrder.remainingAmount) > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 'bold' }}>
+                                            <span>المتبقي:</span>
+                                            <span>{previewOrder.remainingAmount} ج.م</span>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="dashed-line"></div>
+                                
+                                <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                                    نظام إدارة دليفري أبو خاطر
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+                                <button
+                                    onClick={() => printerService.printCashierReceipt(previewOrder, true)}
+                                    className="btn-primary hover-scale"
+                                    style={{ background: 'var(--accent)', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', padding: '10px' }}
+                                >
+                                    📄 طباعة العميل
+                                </button>
+                                <button
+                                    onClick={() => handlePrint(previewOrder)}
+                                    className="btn-primary hover-scale"
+                                    style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', padding: '10px' }}
+                                >
+                                    👨‍🍳 طباعة المطبخ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
             )}
 
             {/* 🖼️ Full Image Modal Preview */}

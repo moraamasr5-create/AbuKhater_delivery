@@ -83,33 +83,77 @@ class PrinterService {
         <title>${title}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap');
+          
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          
+          @media print {
+            html, body {
+              width: 80mm;
+              margin: 0;
+              padding: 0;
+              background: #fff;
+              color: #000;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            body, html, .receipt-container {
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              overflow: visible !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .header, .section, .items-table, .footer, .solid-line, .dashed-line, tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+          }
+          
+          * {
+            box-sizing: border-box;
+          }
+          
           body {
             font-family: 'Cairo', sans-serif;
             margin: 0;
-            padding: 10px;
-            width: 76mm;
+            padding: 2mm 4mm;
+            width: 72mm;
             color: #000;
             background: #fff;
-            font-size: 14px;
+            font-size: 13px;
+            line-height: 1.4;
+            overflow-x: hidden;
           }
-          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-          .title { font-size: 22px; font-weight: 900; margin: 0; }
-          .subtitle { font-size: 14px; font-weight: 800; margin: 4px 0; }
-          .section { margin-bottom: 12px; }
-          .flex { display: flex; justify-content: space-between; align-items: center; }
+          
+          .receipt-container {
+            width: 100%;
+          }
+          
+          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
+          .title { font-size: 18px; font-weight: 900; margin: 0; }
+          .subtitle { font-size: 12px; font-weight: 800; margin: 2px 0; }
+          .section { margin-bottom: 8px; }
+          .flex { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
           .bold { font-weight: 800; }
-          .dashed-line { border-top: 1px dashed #000; margin: 8px 0; }
-          .solid-line { border-top: 2px solid #000; margin: 8px 0; }
-          .items-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-          .items-table th, .items-table td { padding: 4px 0; text-align: right; }
-          .items-table th { border-bottom: 1px solid #000; font-weight: 900; }
+          .dashed-line { border-top: 1px dashed #000; margin: 6px 0; }
+          .solid-line { border-top: 2px solid #000; margin: 6px 0; }
+          .items-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+          .items-table th, .items-table td { padding: 3px 0; text-align: right; vertical-align: top; }
+          .items-table th { border-bottom: 1px solid #000; font-weight: 900; font-size: 12px; }
           .center { text-align: center; }
-          .footer { text-align: center; font-size: 11px; margin-top: 20px; font-weight: bold; }
+          .footer { text-align: center; font-size: 11px; margin-top: 12px; font-weight: bold; }
         </style>
       </head>
       <body>
-        ${content}
-        <div style="text-align: center; font-size: 9px; color: #555; margin-top: 15px; border-top: 1px dotted #000; padding-top: 5px; font-family: sans-serif; direction: ltr;">
+        <div class="receipt-container">
+          ${content}
+        </div>
+        <div style="text-align: center; font-size: 9px; color: #555; margin-top: 12px; border-top: 1px dotted #000; padding-top: 4px; font-family: sans-serif; direction: ltr; page-break-inside: avoid; break-inside: avoid;">
           Developed & Owned by D.AmrMamdouh - 01038035884
         </div>
       </body>
@@ -173,20 +217,37 @@ class PrinterService {
     doc.write(htmlContent);
     doc.close();
 
-    setTimeout(() => {
+    let isPrinted = false;
+    const doPrint = () => {
+      if (isPrinted) return;
+      isPrinted = true;
       try {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
       } catch (err) {
         console.error('Fallback print error:', err);
       } finally {
-        setTimeout(() => document.body.removeChild(iframe), 2000);
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 2000);
       }
-    }, 500);
+    };
+
+    iframe.onload = () => {
+      setTimeout(doPrint, 300);
+    };
+
+    const timeoutId = setTimeout(doPrint, 1500);
+
+    iframe.addEventListener('load', () => {
+      clearTimeout(timeoutId);
+    });
   }
 
   // 1. Kitchen Receipt (بون المطبخ)
-  async printKitchenReceipt(order, forceReprint = false) {
+  async printKitchenReceipt(order, forceReprint = false, pilotName = null) {
     const itemsHtml = (order.items || []).map(i => `
       <tr>
         <td class="bold" style="font-size:16px;">${i.name} ${i.notes ? `<div style="font-size:12px;color:#666;">${i.notes}</div>` : ''}</td>
@@ -204,6 +265,7 @@ class PrinterService {
         <div class="flex"><span>الوقت:</span> <span class="bold">${new Date(order.timestamp || Date.now()).toLocaleTimeString('ar-EG')}</span></div>
         ${order.customerName ? `<div class="flex"><span>العميل:</span> <span class="bold">${order.customerName}</span></div>` : ''}
         ${order.area ? `<div class="flex"><span>العنوان:</span> <span class="bold">${order.area}</span></div>` : ''}
+        ${(pilotName || order.pilotName) ? `<div style="margin-top:6px; font-weight:bold; border:1px solid #000; padding:6px; text-align:center; font-size:14px;">الطيار: ${pilotName || order.pilotName}</div>` : ''}
       </div>
       <div class="solid-line"></div>
       <table class="items-table">
@@ -226,7 +288,7 @@ class PrinterService {
   }
 
   // 2. Cashier Receipt (فاتورة العميل / الكاشير)
-  async printCashierReceipt(order, forceReprint = false) {
+  async printCashierReceipt(order, forceReprint = false, pilotName = null) {
     const itemsHtml = (order.items || []).map(i => `
       <tr>
         <td>${i.name}</td>
@@ -251,6 +313,7 @@ class PrinterService {
         <div class="flex"><span>رقم الهاتف:</span> <span class="bold">${order.phone || 'غير مسجل'}</span></div>
         ${order.area ? `<div class="flex"><span>العنوان:</span> <span class="bold">${order.area}</span></div>` : ''}
         <div class="flex"><span>طريقة الدفع:</span> <span class="bold">${order.paymentMethod || 'كاش'}</span></div>
+        ${(pilotName || order.pilotName) ? `<div style="margin-top:6px; font-weight:bold; border:1px solid #000; padding:6px; text-align:center; font-size:14px;">الطيار: ${pilotName || order.pilotName}</div>` : ''}
       </div>
       <div class="solid-line"></div>
       <table class="items-table" style="font-size:12px;">

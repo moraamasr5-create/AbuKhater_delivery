@@ -9,17 +9,17 @@ const ReportsView = () => {
   const [showArchives, setShowArchives] = React.useState(false);
 
   const handlePrintShiftReport = (report) => {
-    const printWindow = window.open('', '_blank', 'width=900,height=900');
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) return;
 
     const pilotSummaryHtml = (report.pilotStats || []).map(p => `
             <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px; text-align: right;">${p.name}</td>
-                <td style="padding: 10px; text-align: center;">${p.restaurantOrdersCount || 0}</td>
-                <td style="padding: 10px; text-align: center;">${p.onlineOrdersCount || 0}</td>
-                <td style="padding: 10px; text-align: center;">${p.talabatOrdersCount || 0}</td>
-                <td style="padding: 10px; text-align: center;">${p.tripsCount || 0}</td>
-                <td style="padding: 10px; text-align: left; font-weight: bold;">${Math.floor(p.totalEarnings)} ج.م</td>
+                <td style="padding: 4px 2px; text-align: right; font-weight: bold;">${p.name}</td>
+                <td style="padding: 4px 2px; text-align: center;">${p.restaurantOrdersCount || 0}</td>
+                <td style="padding: 4px 2px; text-align: center;">${p.onlineOrdersCount || 0}</td>
+                <td style="padding: 4px 2px; text-align: center;">${p.talabatOrdersCount || 0}</td>
+                <td style="padding: 4px 2px; text-align: center;">${p.tripsCount || 0}</td>
+                <td style="padding: 4px 2px; text-align: left; font-weight: bold;">${Math.floor(p.totalEarnings)}</td>
             </tr>
         `).join('');
 
@@ -27,34 +27,76 @@ const ReportsView = () => {
             <!DOCTYPE html>
             <html dir="rtl">
             <head>
+                <meta charset="utf-8">
                 <title>تقرير وردية - ${report.date}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-                    .header { text-align: center; border-bottom: 3px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th { background: #333; color: white; padding: 12px; text-align: right; }
-                    .summary-box { background: #f4f4f4; padding: 20px; border-radius: 8px; margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-                    .total-final { grid-column: span 2; background: #333; color: white; padding: 15px; text-align: center; font-size: 1.5rem; border-radius: 8px; }
+                    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;850;900&display=swap');
+                    @page {
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    @media print {
+                        html, body {
+                            width: 80mm;
+                            margin: 0;
+                            padding: 0;
+                            background: #fff;
+                            color: #000;
+                        }
+                        body, html, .receipt-container {
+                            height: auto !important;
+                            min-height: 0 !important;
+                            max-height: none !important;
+                            overflow: visible !important;
+                        }
+                        .header, section, table, .footer {
+                            page-break-inside: avoid !important;
+                            break-inside: avoid !important;
+                        }
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: 'Cairo', sans-serif;
+                        margin: 0;
+                        padding: 2mm 4mm;
+                        width: 72mm;
+                        color: #000;
+                        background: #fff;
+                        font-size: 11px;
+                        line-height: 1.3;
+                    }
+                    .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px; }
+                    .title { font-size: 16px; font-weight: 900; margin: 0; }
+                    .subtitle { font-size: 11px; font-weight: 800; margin: 2px 0; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10px; }
+                    th { background: #000; color: white; padding: 4px 2px; text-align: right; }
+                    td { padding: 4px 2px; border-bottom: 1px solid #eee; }
+                    .summary-box { background: #f9f9f9; padding: 6px; border: 1px solid #ccc; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+                    .total-final { background: #000; color: white; padding: 6px; text-align: center; font-size: 13px; font-weight: 900; margin-top: 4px; }
+                    .footer { text-align: center; font-size: 9px; color: #555; margin-top: 10px; border-top: 1px dotted #000; padding-top: 4px; }
+                    .flex { display: flex; justify-content: space-between; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h1>تقرير ختامي للوردية</h1>
-                    <p>التاريخ: <strong>${report.date}</strong></p>
-                    <p>من: ${new Date(report.startTime).toLocaleTimeString('ar-EG')} | إلى: ${new Date(report.endTime).toLocaleTimeString('ar-EG')}</p>
+                    <div class="title">تقرير ختامي للوردية</div>
+                    <div class="subtitle">التاريخ: ${report.date}</div>
+                    <div class="subtitle">من: ${new Date(report.startTime).toLocaleTimeString('ar-EG')} | إلى: ${new Date(report.endTime).toLocaleTimeString('ar-EG')}</div>
                 </div>
 
                 <section>
-                    <h2>إحصائيات الطيارين</h2>
+                    <div style="font-weight: 900; font-size: 12px; margin-bottom: 4px; border-bottom: 1px solid #000; padding-bottom: 2px;">إحصائيات الطيارين</div>
                     <table>
                         <thead>
                             <tr>
-                                <th>الطيار</th>
-                                <th style="text-align: center;">مطعم</th>
-                                <th style="text-align: center;">أونلاين</th>
-                                <th style="text-align: center;">طلبات</th>
-                                <th style="text-align: center;">مشاوير</th>
-                                <th style="text-align: left;">المستحقات</th>
+                                <th style="padding: 4px 2px; text-align: right;">الطيار</th>
+                                <th style="padding: 4px 2px; text-align: center;">مطعم</th>
+                                <th style="padding: 4px 2px; text-align: center;">أونلاين</th>
+                                <th style="padding: 4px 2px; text-align: center;">طلبات</th>
+                                <th style="padding: 4px 2px; text-align: center;">مشاوير</th>
+                                <th style="padding: 4px 2px; text-align: left;">المستحق</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -64,16 +106,27 @@ const ReportsView = () => {
                 </section>
 
                 <section class="summary-box">
-                    <div>إجمالي عدد الطلبات: <strong>${report.ordersCount}</strong></div>
-                    <div>إجمالي بدل الحضور: <strong>${report.totalAttendancePay} ج.م</strong></div>
-                    <div>إجمالي نصيب التوصيل: <strong>${report.totalDeliveryFees} ج.م</strong></div>
+                    <div class="flex"><span>إجمالي الطلبات:</span> <strong>${report.ordersCount}</strong></div>
+                    <div class="flex"><span>إجمالي بدل الحضور:</span> <strong>${report.totalAttendancePay} ج.م</strong></div>
+                    <div class="flex"><span>إجمالي نصيب التوصيل:</span> <strong>${report.totalDeliveryFees} ج.م</strong></div>
                     <div class="total-final">إجمالي مصروف الدليفري: ${report.totalPilotDues} ج.م</div>
                 </section>
 
-                <div style="margin-top: 50px; text-align: center; font-size: 0.9rem; color: #888;">
+                <div class="footer">
                     تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')} - نظام إدارة الدليفري
                 </div>
-                <script>window.print();</script>
+                <script>
+                    window.addEventListener('DOMContentLoaded', () => {
+                        window.addEventListener('load', () => {
+                            setTimeout(() => {
+                                window.print();
+                                setTimeout(() => {
+                                    window.close();
+                                }, 500);
+                            }, 300);
+                        });
+                    });
+                </script>
             </body>
             </html>
         `;
@@ -128,22 +181,22 @@ const ReportsView = () => {
 
   const handlePrintPilotReport = (pilot) => {
     const pOrders = getPilotOrders(pilot.id);
-    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) return;
 
     const ordersHtml = pOrders.map(o => {
       const isFailed = o.status === 'failed_delivery';
       const share = isFailed ? 0 : (o.type === 'trip' ? o.deliveryFee : (o.deliveryFee / 2));
       return `
-                <tr style="border-bottom: 1px solid #eee; ${isFailed ? 'color: #888;' : ''}">
-                    <td style="padding: 10px; text-align: right;">#${o.originalId || o.id}</td>
-                    <td style="padding: 10px; text-align: right;">${new Date(o.timestamp).toLocaleTimeString('ar-EG')}</td>
-                    <td style="padding: 10px; text-align: right;">
-                        ${o.source === 'online' ? 'أونلاين' : o.source === 'talabat' ? 'طلبات (Talabat)' : o.source === 'external' ? 'مشوار' : 'مطعم'}
-                        ${isFailed ? '<br/><small>(فشل: ' + o.failureReason + ')</small>' : ''}
+                <tr style="border-bottom: 1px solid #eee; ${isFailed ? 'color: #888; text-decoration: line-through;' : ''}">
+                    <td style="padding: 4px 2px; text-align: right;">#${o.originalId || o.id}</td>
+                    <td style="padding: 4px 2px; text-align: right;">${new Date(o.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</td>
+                    <td style="padding: 4px 2px; text-align: right;">
+                        ${o.source === 'online' ? 'أونلاين' : o.source === 'talabat' ? 'طلبات' : o.source === 'external' ? 'مشوار' : 'مطعم'}
+                        ${isFailed ? '<br/><small>(فشل)</small>' : ''}
                     </td>
-                    <td style="padding: 10px; text-align: left;">${o.deliveryFee} ج.م</td>
-                    <td style="padding: 10px; text-align: left; font-weight: bold;">${share} ج.م</td>
+                    <td style="padding: 4px 2px; text-align: left;">${o.deliveryFee}</td>
+                    <td style="padding: 4px 2px; text-align: left; font-weight: bold;">${share}</td>
                 </tr>
             `;
     }).join('');
@@ -152,47 +205,88 @@ const ReportsView = () => {
             <!DOCTYPE html>
             <html dir="rtl">
             <head>
+                <meta charset="utf-8">
                 <title>تقرير طيار - ${pilot.name}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-                    .header { text-align: center; border-bottom: 3px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                    .section { margin-bottom: 30px; }
-                    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
-                    .summary-item { background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th { background: #333; color: white; padding: 12px; text-align: right; }
-                    .total-box { margin-top: 30px; padding: 20px; background: #333; color: white; border-radius: 8px; text-align: center; font-size: 1.4rem; }
-                    @media print { .no-print { display: none; } }
+                    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;850;900&display=swap');
+                    @page {
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    @media print {
+                        html, body {
+                            width: 80mm;
+                            margin: 0;
+                            padding: 0;
+                            background: #fff;
+                            color: #000;
+                        }
+                        body, html, .receipt-container {
+                            height: auto !important;
+                            min-height: 0 !important;
+                            max-height: none !important;
+                            overflow: visible !important;
+                        }
+                        .header, .section, table, .footer {
+                            page-break-inside: avoid !important;
+                            break-inside: avoid !important;
+                        }
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: 'Cairo', sans-serif;
+                        margin: 0;
+                        padding: 2mm 4mm;
+                        width: 72mm;
+                        color: #000;
+                        background: #fff;
+                        font-size: 11px;
+                        line-height: 1.3;
+                    }
+                    .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px; }
+                    .title { font-size: 16px; font-weight: 900; margin: 0; }
+                    .subtitle { font-size: 11px; font-weight: 800; margin: 2px 0; }
+                    .section { margin-bottom: 8px; }
+                    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 6px; }
+                    .summary-item { background: #f9f9f9; padding: 4px; border: 1px solid #ccc; text-align: center; font-size: 9px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
+                    th { background: #000; color: white; padding: 4px 2px; text-align: right; }
+                    td { padding: 4px 2px; border-bottom: 1px solid #eee; }
+                    .total-box { margin-top: 10px; padding: 8px; background: #000; color: white; text-align: center; font-size: 13px; font-weight: 900; }
+                    .flex { display: flex; justify-content: space-between; }
+                    .footer { text-align: center; font-size: 9px; color: #555; margin-top: 10px; border-top: 1px dotted #000; padding-top: 4px; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h1>كشف حساب طيار</h1>
-                    <p style="font-size: 1.2rem;">الطيار: <strong>${pilot.name}</strong></p>
-                    <p>التاريخ: ${new Date().toLocaleDateString('ar-EG')} | الوقت: ${new Date().toLocaleTimeString('ar-EG')}</p>
+                    <div class="title">كشف حساب طيار</div>
+                    <div class="subtitle">الطيار: ${pilot.name}</div>
+                    <div class="subtitle">التاريخ: ${new Date().toLocaleDateString('ar-EG')} | الوقت: ${new Date().toLocaleTimeString('ar-EG')}</div>
                 </div>
 
                 <div class="section">
-                    <h2 style="border-right: 5px solid #333; padding-right: 15px;">ملخص الوردية</h2>
+                    <div style="font-weight: 900; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 2px;">ملخص الوردية</div>
                     <div class="summary-grid">
-                        <div className="summary-item"><div>مطعم</div><strong>${pilot.restaurantOrdersCount || 0}</strong></div>
-                        <div className="summary-item"><div>أونلاين</div><strong>${pilot.onlineOrdersCount || 0}</strong></div>
-                        <div className="summary-item"><div>طلبات</div><strong>${pilot.talabatOrdersCount || 0}</strong></div>
-                        <div className="summary-item"><div>مشاوير</div><strong>${pilot.tripsCount || 0}</strong></div>
-                        <div class="summary-item"><div>ساعات</div><strong>${(pilot.totalMinutes / 60).toFixed(1)} س</strong></div>
+                        <div class="summary-item"><div>مطعم</div><strong>${pilot.restaurantOrdersCount || 0}</strong></div>
+                        <div class="summary-item"><div>أونلاين</div><strong>${pilot.onlineOrdersCount || 0}</strong></div>
+                        <div class="summary-item"><div>طلبات</div><strong>${pilot.talabatOrdersCount || 0}</strong></div>
+                        <div class="summary-item"><div>مشاوير</div><strong>${pilot.tripsCount || 0}</strong></div>
+                        <div class="summary-item"><div>ساعات</div><strong>${(pilot.totalMinutes / 60).toFixed(1)}</strong></div>
                     </div>
                 </div>
 
                 <div class="section">
-                    <h2 style="border-right: 5px solid #333; padding-right: 15px;">تفاصيل الرحلات</h2>
+                    <div style="font-weight: 900; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 2px;">تفاصيل الرحلات</div>
                     <table>
                         <thead>
                             <tr>
-                                <th>رقم البون</th>
-                                <th>الوقت</th>
-                                <th>النوع</th>
-                                <th style="text-align: left;">القيمة</th>
-                                <th style="text-align: left;">الصافي</th>
+                                <th style="padding: 4px 2px; text-align: right;">البون</th>
+                                <th style="padding: 4px 2px; text-align: right;">الوقت</th>
+                                <th style="padding: 4px 2px; text-align: right;">النوع</th>
+                                <th style="padding: 4px 2px; text-align: left;">القيمة</th>
+                                <th style="padding: 4px 2px; text-align: left;">الصافي</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,12 +296,12 @@ const ReportsView = () => {
                 </div>
 
                 <div class="section">
-                    <h2 style="border-right: 5px solid #333; padding-right: 15px;">الأرباح النهائية</h2>
-                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 1.1rem;">
+                    <div style="font-weight: 900; font-size: 12px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">الأرباح النهائية</div>
+                    <div class="flex" style="font-size: 11px;">
                         <span>إجمالي نصيب التوصيل:</span>
                         <strong>${pilot.feeEarnings} ج.م</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 1.1rem;">
+                    <div class="flex" style="font-size: 11px; margin-top: 2px;">
                         <span>حساب ساعات الحضور:</span>
                         <strong>${pilot.attendancePay} ج.م</strong>
                     </div>
@@ -216,11 +310,22 @@ const ReportsView = () => {
                     </div>
                 </div>
 
-                <div style="margin-top: 50px; text-align: center; font-size: 0.9rem; color: #888;">
-                    تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')} - نظام إدارة الدليفري
+                <div class="footer">
+                    نظام إدارة الدليفري - أبو خاطر
                 </div>
 
-                <script>window.print();</script>
+                <script>
+                    window.addEventListener('DOMContentLoaded', () => {
+                        window.addEventListener('load', () => {
+                            setTimeout(() => {
+                                window.print();
+                                setTimeout(() => {
+                                    window.close();
+                                }, 500);
+                            }, 300);
+                        });
+                    });
+                </script>
             </body>
             </html>
         `;

@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
 const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenSecurity }) => {
-    const { isShiftOpen, openShift, closeShift, orders, userRole, setUserRole } = useApp();
+    const { isShiftOpen, openShift, closeShift, orders, userRole, setUserRole, isThermalPrintMode, setIsThermalPrintMode } = useApp();
 
     const pendingCount = orders.filter(o => ['pending', 'pending_timer', 'waiting_driver'].includes(o.status)).length;
 
@@ -130,6 +130,27 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                         )}
                     </div>
                 )}
+
+                {/* 🖨️ زر تبديل وضع الطباعة الحرارية */}
+                <button
+                    onClick={() => setIsThermalPrintMode(!isThermalPrintMode)}
+                    className="btn-primary"
+                    style={{
+                        width: '100%',
+                        background: isThermalPrintMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        border: isThermalPrintMode ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        color: isThermalPrintMode ? 'white' : 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '10px',
+                        marginBottom: '8px'
+                    }}
+                >
+                    <span style={{ filter: isThermalPrintMode ? 'none' : 'grayscale(100%)' }}>🖨️</span>
+                    <span>{isThermalPrintMode ? 'وضع الطباعة: حراري 80مم' : 'وضع الطباعة: الشاشة العادي'}</span>
+                </button>
 
                 {/* 🚪 صف الأزرار السفلية (تسجيل الخروج + مفتاح الأمان الصغير للأدمن) */}
                 <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
