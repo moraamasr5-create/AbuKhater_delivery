@@ -694,7 +694,12 @@ const ManualOrderForm = ({ onClose, initialData }) => {
         </div>
         <div style="font-size: 12px; margin-bottom: 8px; text-align: right;">
           <div>اسم العميل: ${formData.customerName || 'عميل خارجي'}</div>
+          <div>رقم العميل: ${formData.phone || 'عميل خارجي'}</div>
           <div>العنوان: ${formData.customArea || 'عنوان مجهول '}</div>
+          <div>الدفع : ${formData.paymentMethod || ' طريقه الدفع '}</div>
+          <div>إجمالي الطلب: ${formData.total || ' إجمالي '}</div>
+          <div> خدمة التوصيل: ${formData.deliveryFee || ' إجمالي '}</div>
+          <div> العناصر : ${formData.itemsDescription || ' إجمالي '}</div>
           <div>التاريخ: ${new Date().toLocaleDateString('ar-EG')} | الوقت: ${new Date().toLocaleTimeString('ar-EG')}</div>
         </div>
         <div class="items">
