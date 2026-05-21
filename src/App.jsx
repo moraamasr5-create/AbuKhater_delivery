@@ -327,7 +327,7 @@ const EditOrderModal = ({ order, onClose }) => {
 };
 
 const DashboardView = () => {
-  const { orders, pilots, activeStats, completeOrder, confirmOrder, updateOrder, failDelivery } = useApp();
+const { orders, pilots, activeStats, completeOrder, confirmOrder, assignPilot, updateOrder, failDelivery } = useApp();
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editModalData, setEditModalData] = useState(null);
   const [viewPilotId, setViewPilotId] = useState(null);
@@ -371,7 +371,7 @@ const DashboardView = () => {
 
   const handleReassign = (orderId, newPilotId) => {
     if (window.confirm('هل أنت متأكد من تغيير الطيار لهذا الطلب؟')) {
-      confirmOrder(orderId, newPilotId);
+      assignPilot(orderId, newPilotId);
       setEditingOrderId(null);
     }
   };

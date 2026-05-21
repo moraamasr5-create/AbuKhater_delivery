@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService } from '../services/supabaseService';
+import { printerService } from '../services/printerService';
 
 const AppContext = createContext();
 
@@ -13,6 +14,7 @@ import {
   generateSafeId
 } from '../utils/shiftLogic';
 import { safeParseOrder } from '../utils/safeOrderParser';
+import { INITIAL_PILOTS } from '../db/pilots';
 
 /**
  * 🔴 الدالة دي هي المسؤولة عن إرسال أي تحديث عام للبيانات لـ Supabase
@@ -92,7 +94,16 @@ export const AppProvider = ({ children }) => {
   });
 
   const [reservations, setReservations] = useState([]);
-  const [pilots, setPilots] = useState([]);
+const [pilots, setPilots] = useState(() => {
+    try {
+      const saved = localStorage.getItem("delivery_pilots");
+      if (saved && saved !== "undefined") {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { }
+    return INITIAL_PILOTS;
+  });
 
   const [currentShift, setCurrentShift] = useState(() => {
     try {

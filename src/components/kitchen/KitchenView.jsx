@@ -11,7 +11,11 @@ const SIMPLE_MENU = {
 };
 
 const KitchenView = () => {
-  const { menuAvailability, toggleMenuItemAvailability } = useApp();
+  const { } = useApp();
+const [menuAvailability, setMenuAvailability] = React.useState({});
+const toggleMenuItemAvailability = (itemName, isAvailable) => {
+  setMenuAvailability(prev => ({ ...prev, [itemName]: !isAvailable }));
+};
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [isUpdating, setIsUpdating] = useState(null); // Keeps track of which item is loading/saving
 
