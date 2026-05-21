@@ -200,7 +200,7 @@ export const supabaseService = {
         endShift: row.end_shif || null,
         status: row.status ? 'online' : 'offline',
         idDelivery: row.id_delivery || null,
-        shift: row.start_shift && row.end_shif ? `${row.start_shift} - ${row.end_shif}` : 'بدون شيفت',
+        shift: row.start_shift && row.end_shift ? `${row.start_shift} - ${row.end_shift}` : 'بدون شيفت',
         zone: row.id_delivery === 1 ? 'مطرية' : row.id_delivery === 2 ? 'عين شمس' : 'عام',
         shiftStatus: row.status ? 'open' : 'closed' // For AppContext compatibility
       }));
@@ -221,7 +221,7 @@ export const supabaseService = {
           name: driverData.name,
           phone: driverData.phone,
           start_shift: parts[0]?.trim() || null,
-          end_shif: parts[1]?.trim() || null,
+          end_shift: parts[1]?.trim() || null,
           number_id: driverData.number_id ? parseInt(driverData.number_id, 10) || null : null,
           number_motor: driverData.number_motor?.trim() || null,
           status: false
