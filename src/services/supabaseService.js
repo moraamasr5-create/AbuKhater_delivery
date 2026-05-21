@@ -1,6 +1,16 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
 import { supabase } from '../config/supabaseClient';
 
+// ✅ Helper لتنسيق الوقتconst formatTime = (t) => {
+  if (!t) return null;
+  const [hourStr, minuteStr] = t.split(':');
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr || '00';
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${ampm}`;
+};
+
 /**
  * خدمة التفاعل المباشر مع Supabase لنظام التوصيل وإدارة المطعم
  * بديلاً عن n8n Webhooks
