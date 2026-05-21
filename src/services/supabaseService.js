@@ -201,12 +201,12 @@ export const supabaseService = {
          status: row.status ? 'online' : 'offline',
          idDelivery: row.id_delivery || null,
          shift: row.start_shift && row.end_shift 
-    ? `${formatTime(row.start_shift)} - ${formatTime(row.end_shift)}` 
-    : 'بدون شيفت',
-  zone: row.id_delivery === 1 ? 'مطرية' : row.id_delivery === 2 ? 'عين شمس' : 'عام',
-  shiftStatus: row.status ? 'open' : 'closed',
+         ? `${formatTime(row.start_shift)} - ${formatTime(row.end_shift)}` 
+         : 'بدون شيفت',
+         zone: row.id_delivery === 1 ? 'مطرية' : row.id_delivery === 2 ? 'عين شمس' : 'عام',
+         shiftStatus: row.status ? 'open' : 'closed',
   // ✅ إضافة timestamp الشيفت الفعلي
-  shiftStartedAt: row.shift_started_at || null,
+        shiftStartedAt: row.shift_started_at || null,
         shiftEndedAt: row.shift_ended_at || null,
 }));
     } catch (err) {
