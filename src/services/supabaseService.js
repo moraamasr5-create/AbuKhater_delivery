@@ -9,7 +9,7 @@ const formatTime = (t) => {        // 👈 هنا قبل الـ export
   const minute = minuteStr || '00';
   const ampm = hour >= 12 ? 'P' : 'A';
   hour = hour % 12 || 12;
-  return `${hour}:${minute} ${ampm}`;
+  return `${hour}:${minute}${ampm}`;
 };
 /**
  * خدمة التفاعل المباشر مع Supabase لنظام التوصيل وإدارة المطعم
