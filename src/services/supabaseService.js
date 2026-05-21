@@ -2,15 +2,29 @@
 import { supabase } from '../config/supabaseClient';
 
 // ✅ Helper لتنسيق الوقتconst formatTime = (t) => { 
-const formatTime = (t) => {        // 👈 هنا قبل الـ export
+//const formatTime = (t) => {        // 👈 هنا قبل الـ export
+ // if (!t) return null;
+ // const [hourStr, minuteStr] = t.split(':');
+ // let hour = parseInt(hourStr, 10);
+//  const minute = minuteStr || '00';
+ // const ampm = hour >= 12 ? 'P' : 'A';
+ // hour = hour % 12 || 12;
+ // return `${hour}:${minute}${ampm}`;
+//};
+// تحويل "8:00 AM" / "9:00 PM" إلى "08:00:00"
+const parseTimeTo24h = (t) => {
   if (!t) return null;
-  const [hourStr, minuteStr] = t.split(':');
-  let hour = parseInt(hourStr, 10);
-  const minute = minuteStr || '00';
-  const ampm = hour >= 12 ? 'P' : 'A';
-  hour = hour % 12 || 12;
-  return `${hour}:${minute}${ampm}`;
+  const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return t; // لو بعت 08:00 مباشرة يرجعها كما هي
+  let hour = parseInt(match[1], 10);
+  const minute = match[2];
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${minute}:00`;
 };
+
+
 /**
  * خدمة التفاعل المباشر مع Supabase لنظام التوصيل وإدارة المطعم
  * بديلاً عن n8n Webhooks
