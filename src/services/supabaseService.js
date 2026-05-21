@@ -7,7 +7,7 @@ const formatTime = (t) => {        // 👈 هنا قبل الـ export
   const [hourStr, minuteStr] = t.split(':');
   let hour = parseInt(hourStr, 10);
   const minute = minuteStr || '00';
-  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const ampm = hour >= 12 ? 'P' : 'A';
   hour = hour % 12 || 12;
   return `${hour}:${minute} ${ampm}`;
 };
