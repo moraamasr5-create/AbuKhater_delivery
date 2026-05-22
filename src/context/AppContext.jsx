@@ -899,12 +899,35 @@ const [pilots, setPilots] = useState(() => {
     }
   };
 
+  const deletePilot = async (pilotId) => {
+    const password = prompt('أدخل كلمة المرور لحذف هذا الطيار:');
+    if (password !== '8080') {
+      if (password !== null) alert('كلمة المرور غير صحيحة');
+      return { success: false, error: 'كلمة المرور غير صحيحة' };
+    }
+
+    if (window.confirm('هل أنت متأكد من حذف هذا الطيار نهائياً؟')) {
+      try {
+        const success = await supabaseService.deleteDeliveryDriver(pilotId);
+        if (success) {
+          setPilots(prev => prev.filter(p => String(p.id) !== String(pilotId)));
+          logAction('PILOT_DELETE', `Pilot deleted`, 'Manager');
+          return { success: true };
+        }
+      } catch (error) {
+        console.error('Delete Pilot Error:', error);
+        return { success: false, error: 'حدث خطأ أثناء الحذف' };
+      }
+    }
+    return { success: false, error: 'تم الإلغاء' };
+  };
+
   return (
     <AppContext.Provider value={{
       orders, pilots, currentShift, dailyReports, auditLogs, reservations,
       userRole, setUserRole, // 🔐 تصدير بيانات الدور لباقي السيستم
       isThermalPrintMode, setIsThermalPrintMode,
-      openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot,
+      openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot, deletePilot,
       addReservation, confirmReservation, deleteReservation,
       isShiftOpen: currentShift?.status === 'open',
       activeStats: activeStats(),

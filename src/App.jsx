@@ -6,7 +6,7 @@ import ReportsView from './components/reports/ReportsView';
 import FeedbackView from './components/feedback/FeedbackView';
 import Login from './components/auth/Login';
 import { useApp } from './context/AppContext';
-import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound } from 'lucide-react';
+import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound, Trash2 } from 'lucide-react';
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
 
@@ -52,7 +52,7 @@ const MATAREYA_AREAS = AREAS_METADATA.map(a => a.name).concat(['اخرى (إدخ
 const MANAGERS = ['أ/عبـدالله', 'أ/فتحـي', 'مدير3', 'الفرع الثاني'];
 
 const PilotManagement = () => {
-  const { pilots, togglePilotShift, addNewPilot } = useApp();
+  const { pilots, togglePilotShift, addNewPilot, deletePilot } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPilotName, setNewPilotName] = useState('');
   const [newPilotPhone, setNewPilotPhone] = useState('');
@@ -226,6 +226,15 @@ const PilotManagement = () => {
                   </h4>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{pilot.phone}</p>
                 </div>
+                <button
+                  onClick={() => deletePilot(pilot.id)}
+                  style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
+                  title="حذف الطيار"
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
 
               <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', gap: '8px' }}>

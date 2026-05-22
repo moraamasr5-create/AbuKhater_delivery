@@ -327,6 +327,17 @@ export const supabaseService = {
     }, driverData, skipQueue);
   },
 
+  async deleteDeliveryDriver(id, skipQueue = false) {
+    return withOfflineSupport('deleteDeliveryDriver', async () => {
+      const { error } = await supabase
+        .from('delivery')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    }, { id }, skipQueue);
+  },
+
   // ─────────────────────────────────────────────────────────
   // 7. updatePilotState
   //    يحدّث حالة طيار في جدول delivery
