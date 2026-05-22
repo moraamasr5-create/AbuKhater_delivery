@@ -340,6 +340,7 @@ const [pilots, setPilots] = useState(() => {
       status: 'open'
     };
     setCurrentShift(newShift);
+    supabaseService.createShift(newShift).catch(e => console.error('Shift create failed:', e));
     // Reset pilots for new shift: Available, No Orders, Last Return = Now (Start of Queue)
     setPilots(prev => prev.map(p => ({
       ...p,
@@ -547,6 +548,10 @@ const [pilots, setPilots] = useState(() => {
         : p
     ));
 
+    if (order.supabaseId) {
+      supabaseService.updatePilotState(order.pilotId, { state: 'out' });
+    }
+
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'out_for_delivery');
@@ -567,10 +572,11 @@ const [pilots, setPilots] = useState(() => {
 
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
+      const otherActive = orders.some(o => String(o.pilotId) === String(order.pilotId) && o.status === 'active' && o.id !== orderId);
+      const nextState = otherActive ? 'out' : 'available';
+
       setPilots(prev => prev.map(p => {
         if (String(p.id) === String(order.pilotId)) {
-          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
-          const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
@@ -580,6 +586,11 @@ const [pilots, setPilots] = useState(() => {
         }
         return p;
       }));
+
+      const returnUpdates = nextState === 'available' 
+        ? { state: 'available', last_return_time: nowTime }
+        : { state: 'out' };
+      supabaseService.updatePilotState(order.pilotId, returnUpdates);
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
@@ -601,10 +612,11 @@ const [pilots, setPilots] = useState(() => {
 
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
     if (order.pilotId) {
+      const otherActive = orders.some(o => String(o.pilotId) === String(order.pilotId) && o.status === 'active' && o.id !== orderId);
+      const nextState = otherActive ? 'out' : 'available';
+
       setPilots(prev => prev.map(p => {
         if (String(p.id) === String(order.pilotId)) {
-          const otherActive = orders.some(o => String(o.pilotId) === String(p.id) && o.status === 'active' && o.id !== orderId);
-          const nextState = otherActive ? 'out' : 'available';
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
@@ -614,6 +626,11 @@ const [pilots, setPilots] = useState(() => {
         }
         return p;
       }));
+
+      const returnUpdates = nextState === 'available' 
+        ? { state: 'available', last_return_time: nowTime }
+        : { state: 'out' };
+      supabaseService.updatePilotState(order.pilotId, returnUpdates);
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason, endTime: nowTime, failedAt: nowTime }, 'ORDER_FAIL');
@@ -633,8 +650,25 @@ const [pilots, setPilots] = useState(() => {
       return;
     }
 
-    // Call Supabase to update status (boolean)
-    await supabaseService.updateDriverStatus(pilotId, newStatus === 'open');
+    let sessionMinutes = 0;
+    if (newStatus === 'closed' && pilot.lastOpenedAt) {
+      sessionMinutes = calculateDelayMinutes(pilot.lastOpenedAt);
+    }
+
+    // Call Supabase to update status
+    await supabaseService.updatePilotState(pilotId, {
+      shift_status: newStatus,
+      ...(newStatus === 'open' ? { 
+        state: 'available', 
+        last_return_time: getSafeISOTime(),
+        last_opened_at: getSafeISOTime() 
+      } : { 
+        state: 'off',
+        last_opened_at: null,
+        shift_used: true,
+        total_minutes: (pilot.totalMinutes || 0) + sessionMinutes
+      })
+    });
 
     // Optimistically update UI
     setPilots(prev => prev.map(p => {
