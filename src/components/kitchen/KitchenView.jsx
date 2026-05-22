@@ -12,12 +12,36 @@ const SIMPLE_MENU = {
 
 const KitchenView = () => {
   const { } = useApp();
-const [menuAvailability, setMenuAvailability] = React.useState({});
-const toggleMenuItemAvailability = (itemName, isAvailable) => {
-  setMenuAvailability(prev => ({ ...prev, [itemName]: !isAvailable }));
-};
+  const [menuAvailability, setMenuAvailability] = React.useState({});
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [isUpdating, setIsUpdating] = useState(null); // Keeps track of which item is loading/saving
+
+  React.useEffect(() => {
+    const loadAvailability = async () => {
+      try {
+        const data = await import('../../services/supabaseService').then(m => m.supabaseService.fetchMenuAvailability());
+        if (data) setMenuAvailability(data);
+      } catch (e) {
+        console.error('Failed to load menu availability:', e);
+      }
+    };
+    loadAvailability();
+  }, []);
+
+  const toggleMenuItemAvailability = async (itemName, isAvailable) => {
+    // Optimistic update
+    setMenuAvailability(prev => ({ ...prev, [itemName]: isAvailable }));
+    
+    // Sync to Supabase
+    try {
+      const { supabaseService } = await import('../../services/supabaseService');
+      await supabaseService.updateMenuAvailability(itemName, isAvailable);
+    } catch (err) {
+      console.error('Failed to update menu item:', err);
+      // Revert if failed and offline sync couldn't handle it
+      setMenuAvailability(prev => ({ ...prev, [itemName]: !isAvailable }));
+    }
+  };
 
   const handleToggle = async (itemName, isAvailable) => {
     setIsUpdating(itemName);

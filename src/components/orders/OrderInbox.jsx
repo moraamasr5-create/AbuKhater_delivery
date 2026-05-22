@@ -167,7 +167,7 @@ const OrderInbox = ({ onReedit }) => {
                                 const isInGracePeriod = order.status === 'pending_timer';
                                 const timeLeft = auditTimers[order.id] || 0;
                                 const suggestedPilot = order.status === 'waiting_driver' ? getSuggestedPilot() : null;
-                                const isOnline = order.source === 'online' || order.type === 'online' || !!order.customer;
+                                const isOnline = order.source === 'online';
 
                                 const normalized = isOnline ? {
                                     name: order.customerName || order.customer?.name || "عميل غير معروف",

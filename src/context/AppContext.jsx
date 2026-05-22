@@ -389,18 +389,8 @@ const [pilots, setPilots] = useState(() => {
 
     setDailyReports(prev => [snapshot, ...prev]);
 
-    // Automatic JSON Download for Audit
-    try {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snapshot, null, 2));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `Shift_Report_${snapshot.date.replace(/\//g, '-')}_Full.json`);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-    } catch (e) {
-      console.error("Failed to auto-download shift report", e);
-    }
+    // Automatic JSON Download removed to prevent browser errors
+
 
     logAction('SHIFT_CLOSE', `Shift closed. Orders: ${stats.totalOrders}. File Generated.`, 'Manager');
     sendToN8N(snapshot, 'SHIFT_CLOSE');

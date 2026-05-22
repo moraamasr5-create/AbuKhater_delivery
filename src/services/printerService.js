@@ -259,7 +259,7 @@ class PrinterService {
       <div class="header">
         <div class="title">بون المطبخ (KITCHEN)</div>
         <div class="subtitle">رقم الطلب: #${order.originalId || order.id}</div>
-        <div class="subtitle">${order.type === 'online' ? 'توصيل (Delivery)' : 'تيك أواي / صالة'}</div>
+        <div class="subtitle">${order.source === 'online' ? 'توصيل (Delivery)' : 'تيك أواي / صالة'}</div>
       </div>
       <div class="section">
         <div class="flex"><span>الوقت:</span> <span class="bold">${new Date(order.timestamp || Date.now()).toLocaleTimeString('ar-EG')}</span></div>

@@ -1,10 +1,78 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
-import { supabase } from '../config/supabaseClient';
+import { supabase } from './supabase/supabaseClient';
+
+const QUEUE_KEY = 'delivery_pending_sync';
+
+// Offline Sync Helpers
+const getPendingQueue = () => {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
+  catch { return []; }
+};
+
+const savePendingQueue = (queue) => {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+};
+
+const queueSync = (action, payload) => {
+  const q = getPendingQueue();
+  q.push({ action, payload, id: Date.now() });
+  savePendingQueue(q);
+};
+
+export const processPendingSync = async () => {
+  if (!navigator.onLine) return;
+  const q = getPendingQueue();
+  if (!q.length) return;
+
+  console.log(`🔄 Processing ${q.length} pending offline syncs...`);
+  const remainingQueue = [];
+
+  for (const item of q) {
+    try {
+      if (item.action === 'updateOrderStatus') {
+        await supabaseService.updateOrderStatus(item.payload.orderId, item.payload.newStatus, item.payload.reason, item.payload.extraFields, true);
+      } else if (item.action === 'updatePilotState') {
+        await supabaseService.updatePilotState(item.payload.id, item.payload.stateUpdates, true);
+      } else if (item.action === 'saveShiftReport') {
+        await supabaseService.saveShiftReport(item.payload, true);
+      } else if (item.action === 'createShift') {
+        await supabaseService.createShift(item.payload, true);
+      } else if (item.action === 'updateMenuAvailability') {
+        await supabaseService.updateMenuAvailability(item.payload.itemName, item.payload.isAvailable, true);
+      } else if (item.action === 'saveOrder') {
+        await supabaseService.saveOrder(item.payload, true);
+      }
+    } catch (e) {
+      console.warn('⚠️ Offline sync item failed, keeping in queue:', item);
+      remainingQueue.push(item);
+    }
+  }
+
+  savePendingQueue(remainingQueue);
+};
+
+// Auto process on connect
+window.addEventListener('online', processPendingSync);
+
+// Helper to wrap calls
+const withOfflineSupport = async (actionName, promiseFn, queuePayload, skipQueue = false) => {
+  try {
+    if (!navigator.onLine) throw new Error('Offline');
+    const res = await promiseFn();
+    return res;
+  } catch (err) {
+    console.warn(`⚠️ Supabase offline fallback for ${actionName}`, err);
+    if (!skipQueue && queuePayload) {
+      queueSync(actionName, queuePayload);
+    }
+    return null; // Return null to let UI continue from localStorage
+  }
+};
 
 export const supabaseService = {
   // 1. fetchOrders
   async fetchOrders() {
-    try {
+    return withOfflineSupport('fetchOrders', async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
@@ -22,7 +90,6 @@ export const supabaseService = {
         const rawPayload = row.raw_payload || {};
         const orderId = rawPayload.order_id || `#${row.id.slice(0, 6)}`;
         
-        // items fallback to raw_payload.items if empty
         const rawItems = (row.items && Array.isArray(row.items) && row.items.length > 0) 
             ? row.items 
             : (rawPayload.items || []);
@@ -72,24 +139,46 @@ export const supabaseService = {
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
           pilotId: row.pilot_id || null,
           pilotName: row.pilot_name || null,
-          lat: row.coordinates?.lat || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
-          lng: row.coordinates?.lng || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
+          lat: row.latitude || row.coordinates?.lat || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
+          lng: row.longitude || row.coordinates?.lng || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
           rawPayload: rawPayload
         };
       });
-    } catch (err) {
-      console.error('❌ Supabase fetchOrders exception:', err);
-      return [];
-    }
+    }, null);
+  },
+
+  /**
+   * حفظ الطلبات الجديدة بقاعدة البيانات مع إحداثيات مباشرة
+   */
+  async saveOrder(order, skipQueue = false) {
+    return withOfflineSupport('saveOrder', async () => {
+      const payload = {
+        status: order.status || 'pending',
+        type: order.type || 'delivery',
+        source: order.source || 'manual',
+        customer_name: order.customerName || order.customer?.name,
+        phone_1: order.phone || order.customer?.phone,
+        address: order.area || order.customer?.address,
+        totals: {
+          total: order.total || 0,
+          delivery_fee: order.deliveryFee || 0
+        },
+        latitude: order.lat || order.latitude || null,
+        longitude: order.lng || order.longitude || null,
+        raw_payload: order.rawPayload || order
+      };
+      
+      const { error } = await supabase.from('orders').insert([payload]);
+      if (error) throw error;
+    }, order, skipQueue);
   },
 
   // 2. updateOrderStatus
-  async updateOrderStatus(orderId, newStatus, reason = null, extraFields = {}) {
-    try {
+  async updateOrderStatus(orderId, newStatus, reason = null, extraFields = {}, skipQueue = false) {
+    return withOfflineSupport('updateOrderStatus', async () => {
       const cleanId = String(orderId).replace('EXT-', '');
       let dbStatus = newStatus;
 
-      // Keep the same Arabic/English dual mapping logic
       if (newStatus === 'confirmed' || newStatus === 'waiting_driver') {
         dbStatus = 'في التحضير';
       } else if (newStatus === 'cancelled') {
@@ -120,20 +209,13 @@ export const supabaseService = {
       }
 
       const { error } = await query;
-
-      if (error) {
-        console.error(`❌ Supabase updateOrderStatus error for ${cleanId}:`, error);
-      } else {
-        console.log(`✅ Supabase status updated to ${dbStatus} for order ${cleanId}`);
-      }
-    } catch (err) {
-      console.error('❌ Supabase updateOrderStatus exception:', err);
-    }
+      if (error) throw error;
+    }, { orderId, newStatus, reason, extraFields }, skipQueue);
   },
 
   // 3. fetchReservations
   async fetchReservations() {
-    try {
+    return withOfflineSupport('fetchReservations', async () => {
       const { data, error } = await supabase
         .from('reservations')
         .select('*')
@@ -154,42 +236,32 @@ export const supabaseService = {
         notes: row.notes || '',
         paymentProof: row.payment_proof_url || null,
         status: row.status || 'pending',
-        deposit: Number(row.deposit) || 0,
+        deposit: Number(row.deposit_amount) || 0,
         timestamp: row.created_at || new Date().toISOString()
       }));
-    } catch (err) {
-      console.error('❌ Supabase fetchReservations exception:', err);
-      return [];
-    }
+    }, null);
   },
 
   // 4. updateReservationStatus
-  async updateReservationStatus(id, newStatus, refNum = null) {
-    try {
+  async updateReservationStatus(id, newStatus, refNum = null, skipQueue = false) {
+    return withOfflineSupport('updateReservationStatus', async () => {
       const { error } = await supabase
         .from('reservations')
         .update({ status: newStatus, ref_number: refNum })
         .eq('id', id);
-
-      if (error) console.error('❌ Supabase updateReservationStatus error:', error);
-    } catch (err) {
-      console.error('❌ Supabase updateReservationStatus exception:', err);
-    }
+      if (error) throw error;
+    }, { id, newStatus, refNum }, skipQueue);
   },
 
-  // 5. fetchDeliveryDrivers (now pilots)
+  // 5. fetchDeliveryDrivers
   async fetchDeliveryDrivers() {
-    try {
+    return withOfflineSupport('fetchDeliveryDrivers', async () => {
       const { data, error } = await supabase
-        .from('pilots')
+        .from('delivery')
         .select('*')
         .order('id', { ascending: true });
 
-      if (error) {
-        console.error('❌ Supabase fetchDeliveryDrivers error:', error);
-        return [];
-      }
-
+      if (error) return [];
       if (!data) return [];
 
       return data.map(row => ({
@@ -210,16 +282,13 @@ export const supabaseService = {
         numberId: row.number_id || null,
         shiftUsed: Boolean(row.shift_used) || false,
       }));
-    } catch (err) {
-      console.error('❌ Supabase fetchDeliveryDrivers exception:', err);
-      return [];
-    }
+    }, null);
   },
 
-  async addDeliveryDriver(driverData) {
-    try {
+  async addDeliveryDriver(driverData, skipQueue = false) {
+    return withOfflineSupport('addDeliveryDriver', async () => {
       const { data, error } = await supabase
-        .from('pilots')
+        .from('delivery')
         .insert([{
           name: driverData.name,
           phone: driverData.phone,
@@ -230,28 +299,20 @@ export const supabaseService = {
         }])
         .select();
 
-      if (error) console.error('❌ Supabase addDeliveryDriver error:', error);
+      if (error) throw error;
       return data;
-    } catch (err) {
-      console.error('❌ Supabase addDeliveryDriver exception:', err);
-      return null;
-    }
+    }, driverData, skipQueue);
   },
 
-  // 6. updateDriverStatus / updatePilotState
-  async updatePilotState(id, stateUpdates) {
-    try {
+  // 6. updatePilotState
+  async updatePilotState(id, stateUpdates, skipQueue = false) {
+    return withOfflineSupport('updatePilotState', async () => {
       const { error } = await supabase
-        .from('pilots')
+        .from('delivery')
         .update(stateUpdates)
         .eq('id', id);
-
-      if (error) {
-        console.error('❌ Supabase updatePilotState error:', error);
-      }
-    } catch (err) {
-      console.error('❌ Supabase updatePilotState exception:', err);
-    }
+      if (error) throw error;
+    }, { id, stateUpdates }, skipQueue);
   },
 
   async updateDriverStatus(id, isOnline) {
@@ -259,8 +320,8 @@ export const supabaseService = {
   },
 
   // 7. saveShiftReport
-  async saveShiftReport(reportData) {
-    try {
+  async saveShiftReport(reportData, skipQueue = false) {
+    return withOfflineSupport('saveShiftReport', async () => {
       const { error } = await supabase
         .from('daily_reports')
         .insert([{
@@ -275,20 +336,17 @@ export const supabaseService = {
           created_at: new Date().toISOString()
         }]);
 
-      if (error) console.error('❌ Supabase saveShiftReport daily_reports error:', error);
+      if (error) throw error;
 
       await supabase.from('shifts')
         .update({ status: 'closed', end_time: reportData.endTime, 
                   total_orders: reportData.ordersCount, stats: reportData })
         .eq('id', reportData.id);
-
-    } catch (err) {
-      console.error('❌ Supabase saveShiftReport exception:', err);
-    }
+    }, reportData, skipQueue);
   },
 
-  async createShift(shiftData) {
-    try {
+  async createShift(shiftData, skipQueue = false) {
+    return withOfflineSupport('createShift', async () => {
       const { data, error } = await supabase
         .from('shifts')
         .insert([{
@@ -298,16 +356,13 @@ export const supabaseService = {
           status: 'open'
         }])
         .select();
-      if (error) console.error('❌ createShift:', error);
+      if (error) throw error;
       return data;
-    } catch (err) {
-      console.error('❌ createShift exception:', err);
-      return null;
-    }
+    }, shiftData, skipQueue);
   },
 
-  async createReservation(resData) {
-    try {
+  async createReservation(resData, skipQueue = false) {
+    return withOfflineSupport('createReservation', async () => {
       const { data, error } = await supabase
         .from('reservations')
         .insert([{
@@ -318,65 +373,74 @@ export const supabaseService = {
           guests: resData.guests,
           location_type: resData.type || resData.locationType,
           notes: resData.notes,
-          deposit: resData.deposit || 0,
+          deposit_amount: resData.deposit || 0,
           status: 'pending'
         }])
         .select();
-
-      if (error) console.error('❌ Supabase createReservation error:', error);
+      if (error) throw error;
       return data;
-    } catch (err) {
-      console.error('❌ Supabase createReservation exception:', err);
-      return null;
-    }
+    }, resData, skipQueue);
   },
 
-  async deleteReservation(id) {
-    try {
+  async deleteReservation(id, skipQueue = false) {
+    return withOfflineSupport('deleteReservation', async () => {
       const cleanId = String(id).replace('RES-', '');
       const { error } = await supabase
         .from('reservations')
         .delete()
         .eq('id', cleanId);
-
-      if (error) console.error('❌ Supabase deleteReservation error:', error);
-    } catch (err) {
-      console.error('❌ Supabase deleteReservation exception:', err);
-    }
+      if (error) throw error;
+    }, { id }, skipQueue);
   },
   
+  // Kitchen Sync: Menu Availability
+  async fetchMenuAvailability() {
+    return withOfflineSupport('fetchMenuAvailability', async () => {
+      const { data, error } = await supabase
+        .from('menu_availability')
+        .select('*');
+      if (error) throw error;
+      
+      const availabilityMap = {};
+      if (data) {
+        data.forEach(item => {
+          availabilityMap[item.item_name] = item.is_available;
+        });
+      }
+      return availabilityMap;
+    }, null);
+  },
+
+  async updateMenuAvailability(itemName, isAvailable, skipQueue = false) {
+    return withOfflineSupport('updateMenuAvailability', async () => {
+      const { error } = await supabase
+        .from('menu_availability')
+        .upsert({ item_name: itemName, is_available: isAvailable }, { onConflict: 'item_name' });
+      if (error) throw error;
+    }, { itemName, isAvailable }, skipQueue);
+  },
+
   // 9. fetchFeedbacks
   async fetchFeedbacks() {
-    try {
+    return withOfflineSupport('fetchFeedbacks', async () => {
       const { data, error } = await supabase
         .from('feedback')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Supabase fetchFeedbacks error:', error);
-        return [];
-      }
+      if (error) throw error;
       return data || [];
-    } catch (err) {
-      console.error('❌ Supabase fetchFeedbacks exception:', err);
-      return [];
-    }
+    }, null);
   },
 
-  async deleteFeedback(id) {
-    try {
+  async deleteFeedback(id, skipQueue = false) {
+    return withOfflineSupport('deleteFeedback', async () => {
       const { error } = await supabase
         .from('feedback')
         .delete()
         .eq('id', id);
-
-      if (error) console.error('❌ Supabase deleteFeedback error:', error);
+      if (error) throw error;
       return !error;
-    } catch (err) {
-      console.error('❌ Supabase deleteFeedback exception:', err);
-      return false;
-    }
+    }, { id }, skipQueue);
   },
 
   // 8. Realtime Subscriptions
@@ -403,7 +467,7 @@ export const supabaseService = {
   subscribeToDrivers(callback) {
     return supabase
       .channel('custom-drivers-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pilots' }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery' }, payload => {
         console.log('🔄 Realtime Driver Update:', payload);
         callback(payload);
       })

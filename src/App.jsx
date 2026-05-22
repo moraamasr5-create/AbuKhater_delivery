@@ -1327,32 +1327,11 @@ const SecurityModal = ({ onClose }) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    // Validation: PIN should be numeric only
-    if (!/^\d+$/.test(newPin)) {
-      setError('⚠️ يجب أن تتكون كلمة المرور من أرقام فقط!');
-      return;
-    }
-
-    if (newPin.length < 4) {
-      setError('⚠️ يجب أن لا تقل كلمة المرور عن 4 أرقام!');
-      return;
-    }
-
-    if (newPin !== confirmPin) {
-      setError('⚠️ كلمتا المرور غير متطابقتين!');
-      return;
-    }
-
-    // Save to localStorage
-    const storageKey = `b_delivery_password_${targetUser}`;
-    localStorage.setItem(storageKey, newPin);
-    setSuccess(`✅ تم تغيير كلمة مرور ${targetUser === 'admin' ? 'المشرف' : 'الكاشير'} بنجاح!`);
-    setNewPin('');
-    setConfirmPin('');
+    // Disabled saving plaintext passwords to localStorage for security
+    setError('⚠️ تم إيقاف تغيير كلمات المرور محلياً لدواعي أمنية.');
     setTimeout(() => {
       onClose();
-    }, 1500);
+    }, 2000);
   };
 
   return (
