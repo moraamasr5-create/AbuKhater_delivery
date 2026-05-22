@@ -14,7 +14,6 @@ import {
   generateSafeId
 } from '../utils/shiftLogic';
 import { safeParseOrder } from '../utils/safeOrderParser';
-import { INITIAL_PILOTS } from '../db/pilots';
 
 /**
  * 🔴 الدالة دي هي المسؤولة عن إرسال أي تحديث عام للبيانات لـ Supabase
@@ -108,7 +107,7 @@ const [pilots, setPilots] = useState(() => {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch { }
-    return INITIAL_PILOTS;
+    return [];
   });
 
   const [currentShift, setCurrentShift] = useState(() => {
