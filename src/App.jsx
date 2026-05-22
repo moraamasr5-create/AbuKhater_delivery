@@ -56,7 +56,8 @@ const PilotManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPilotName, setNewPilotName] = useState('');
   const [newPilotPhone, setNewPilotPhone] = useState('');
-  const [newPilotShift, setNewPilotShift] = useState('8:00A - 6:00P');
+  const [newPilotStartShift, setNewPilotStartShift] = useState('01:00');
+  const [newPilotEndShift, setNewPilotEndShift] = useState('11:00');
   const [newPilotIdNumber, setNewPilotIdNumber] = useState('');
   const [newPilotMotor, setNewPilotMotor] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +96,8 @@ const PilotManagement = () => {
     const result = await addNewPilot({
       name: newPilotName,
       phone: newPilotPhone,
-      shift: newPilotShift,
+      start_shift: newPilotStartShift,
+      end_shift: newPilotEndShift,
       number_id: newPilotIdNumber,
       number_motor: newPilotMotor
     });
@@ -106,7 +108,8 @@ const PilotManagement = () => {
       setShowAddModal(false);
       setNewPilotName('');
       setNewPilotPhone('');
-      setNewPilotShift('8:00A - 6:00P');
+      setNewPilotStartShift('01:00');
+      setNewPilotEndShift('11:00');
       setNewPilotIdNumber('');
       setNewPilotMotor('');
     } else {
@@ -169,14 +172,30 @@ const PilotManagement = () => {
                 className="glass-card"
                 style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
               />
-              <input
-                placeholder="مواعيد العمل (مثال: 8:00A - 6:00P)"
-                value={newPilotShift}
-                onChange={e => setNewPilotShift(e.target.value)}
-                className="glass-card"
-                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                required
-              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>بداية الوردية</label>
+                  <input
+                    type="time"
+                    value={newPilotStartShift}
+                    onChange={e => setNewPilotStartShift(e.target.value)}
+                    className="glass-card"
+                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white', width: '100%' }}
+                    required
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>نهاية الوردية</label>
+                  <input
+                    type="time"
+                    value={newPilotEndShift}
+                    onChange={e => setNewPilotEndShift(e.target.value)}
+                    className="glass-card"
+                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.05)', color: 'white', width: '100%' }}
+                    required
+                  />
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ flex: 1, justifyContent: 'center', background: 'var(--accent)', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
                   {isSubmitting ? 'جاري الإضافة...' : 'حفظ'}

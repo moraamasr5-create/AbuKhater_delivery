@@ -317,7 +317,9 @@ export const supabaseService = {
           name: driverData.name,
           phone: driverData.phone || null,
           number_motor: driverData.number_motor || null,
-          number_id: driverData.number_id ? Number(driverData.number_id) : null
+          number_id: driverData.number_id ? Number(driverData.number_id) : null,
+          start_shift: driverData.start_shift || '01:00:00',
+          end_shift: driverData.end_shift || '11:00:00'
         }])
         .select();
       if (error) throw error;

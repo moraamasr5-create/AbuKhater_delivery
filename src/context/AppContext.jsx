@@ -866,7 +866,7 @@ const [pilots, setPilots] = useState(() => {
   };
 
   const addNewPilot = async (pilotData) => {
-    const { name, phone, shift, number_id, number_motor } = pilotData;
+    const { name, phone, start_shift, end_shift, number_id, number_motor } = pilotData;
 
     if (pilots.some(p => p.name === name)) {
       return { success: false, error: 'اسم الطيار موجود بالفعل!' };
@@ -882,7 +882,7 @@ const [pilots, setPilots] = useState(() => {
         phone,
         numberId: row.number_id,
         numberMotor: row.number_motor,
-        shift: shift || 'غير محدد',
+        shift: `${start_shift || '01:00'} - ${end_shift || '11:00'}`,
         state: 'available',
         shiftStatus: 'closed',
         vehicle: 'موتوسيكل',
