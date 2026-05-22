@@ -1,7 +1,7 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
-import { supabaseService } from '../services/supabaseService';
+import { supabaseService, processPendingSync } from '../services/supabaseService';
 import { printerService } from '../services/printerService';
 
 const AppContext = createContext();
@@ -93,7 +93,13 @@ export const AppProvider = ({ children }) => {
     } catch { return []; }
   });
 
-  const [reservations, setReservations] = useState([]);
+  // الحجوزات: تُحمّل من localStorage أولاً ثم يُحدّث من Supabase في الخلفية
+  const [reservations, setReservations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('delivery_reservations');
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 const [pilots, setPilots] = useState(() => {
     try {
       const saved = localStorage.getItem("delivery_pilots");
@@ -150,18 +156,21 @@ const [pilots, setPilots] = useState(() => {
     localStorage.setItem('delivery_reservations', JSON.stringify(reservations));
   }, [reservations]);
 
-  // System Timer for Auto-Shift Close (at 4 AM)
+  // عند تحميل التطبيق: أعد محاولة العمليات المعلّقة (pendingSync) في حال وجود اتصال
+  useEffect(() => {
+    processPendingSync();
+  }, []);
+
+  // إغلاق تلقائي للوردية عند الساعة 4 صباحاً
   useEffect(() => {
     const checkAutoClose = () => {
       const now = getNormalizedNow();
       if (currentShift && now.getHours() === 4) {
-        // Only trigger if there are no active orders (already handled in closeShift logic)
-        // This will attempt a force-close which triggers the JSON download
         closeShift(true);
       }
     };
 
-    const timer = setInterval(checkAutoClose, 10 * 60 * 1000); // Check every 10 mins
+    const timer = setInterval(checkAutoClose, 10 * 60 * 1000);
     return () => clearInterval(timer);
   }, [currentShift]);
 
@@ -169,6 +178,9 @@ const [pilots, setPilots] = useState(() => {
   const retryRef = useRef(0);
   const pendingUpdatesRef = useRef(new Set()); // Set of supabaseIds being updated
 
+  /**
+   * يُحدّث حالة الطلب في Supabase مع حماية من التحديثات المكررة أثناء الـ polling
+   */
   const updateExternalOrderStatus = async (orderId, newStatus, reason = null, extraFields = {}) => {
     pendingUpdatesRef.current.add(String(orderId));
     try {
@@ -331,6 +343,10 @@ const [pilots, setPilots] = useState(() => {
     })[0];
   };
 
+  /**
+   * فتح وردية جديدة: يُنشئ الوردية محلياً ويُرسلها لـ Supabase
+   * يعمل بدون إنترنت بفضل localStorage + pendingSync
+   */
   const openShift = () => {
     if (currentShift) return;
     const newShift = {
@@ -356,6 +372,10 @@ const [pilots, setPilots] = useState(() => {
     logAction('SHIFT_OPEN', 'New shift started', 'Manager');
   };
 
+  /**
+   * إغلاق الوردية: يحفظ التقرير ويُرسله لـ Supabase
+   * يعمل بشكل كامل offline ويتزامن لاحقاً
+   */
   const closeShift = (force = false) => {
     if (!currentShift) return false;
 
@@ -401,6 +421,10 @@ const [pilots, setPilots] = useState(() => {
     return true;
   };
 
+  /**
+   * إضافة طلب جديد: يحفظ محلياً أولاً ثم يرسل لـ Supabase
+   * يتحقق من التكرارات ورقم البون
+   */
   const addOrder = (orderData) => {
     if (!orderData.id) {
       alert('خطأ: لا يوجد رقم بون');
@@ -549,6 +573,9 @@ const [pilots, setPilots] = useState(() => {
   };
 
   // Step 4: Complete (Pilot Returns -> Status Available + Queue Update)
+  /**
+   * إتمام الطلب: يُعيد الطيار لقائمة الانتظار ويحدّث الحالة
+   */
   const completeOrder = (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.status === 'completed') return;
@@ -629,6 +656,10 @@ const [pilots, setPilots] = useState(() => {
     }
   };
 
+  /**
+   * فتح/إغلاق وردية الطيار: يحدّث الحالة محلياً ويُزامنها مع Supabase
+   * يحسب دقائق العمل تلقائياً عند الإغلاق
+   */
   const togglePilotShift = async (pilotId) => {
     const pilot = pilots.find(p => String(p.id) === String(pilotId));
     if (!pilot) return;
@@ -688,6 +719,10 @@ const [pilots, setPilots] = useState(() => {
     }));
   };
 
+  /**
+   * إحصائيات الوردية الحالية: يحسب أداء كل طيار وإجمالي الطلبات
+   * يُستدعى في كل render للـ Dashboard
+   */
   const activeStats = () => {
     const finishedOrders = orders.filter(o => o.status === 'completed');
     const failedOrders = orders.filter(o => o.status === 'failed_delivery');

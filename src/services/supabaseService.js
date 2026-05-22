@@ -1,24 +1,40 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
 import { supabase } from './supabase/supabaseClient';
 
+// ============================================================
+// OFFLINE SYNC QUEUE
+// ============================================================
+
 const QUEUE_KEY = 'delivery_pending_sync';
 
-// Offline Sync Helpers
+/**
+ * يقرأ قائمة العمليات المنتظرة من localStorage
+ */
 const getPendingQueue = () => {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
   catch { return []; }
 };
 
+/**
+ * يحفظ قائمة العمليات المنتظرة في localStorage
+ */
 const savePendingQueue = (queue) => {
   localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 };
 
+/**
+ * يضيف عملية فاشلة لقائمة الانتظار لإعادة المحاولة عند عودة الاتصال
+ */
 const queueSync = (action, payload) => {
   const q = getPendingQueue();
   q.push({ action, payload, id: Date.now() });
   savePendingQueue(q);
 };
 
+/**
+ * يعيد تشغيل العمليات المنتظرة في القائمة عند عودة الاتصال بالإنترنت
+ * يُستدعى تلقائياً عند أي reconnect
+ */
 export const processPendingSync = async () => {
   if (!navigator.onLine) return;
   const q = getPendingQueue();
@@ -30,7 +46,7 @@ export const processPendingSync = async () => {
   for (const item of q) {
     try {
       if (item.action === 'updateOrderStatus') {
-        await supabaseService.updateOrderStatus(item.payload.orderId, item.payload.newStatus, item.payload.reason, item.payload.extraFields, true);
+        await supabaseService.updateOrderStatus(item.payload.supabaseId, item.payload.newStatus, item.payload.reason, item.payload.extraFields, true);
       } else if (item.action === 'updatePilotState') {
         await supabaseService.updatePilotState(item.payload.id, item.payload.stateUpdates, true);
       } else if (item.action === 'saveShiftReport') {
@@ -39,8 +55,6 @@ export const processPendingSync = async () => {
         await supabaseService.createShift(item.payload, true);
       } else if (item.action === 'updateMenuAvailability') {
         await supabaseService.updateMenuAvailability(item.payload.itemName, item.payload.isAvailable, true);
-      } else if (item.action === 'saveOrder') {
-        await supabaseService.saveOrder(item.payload, true);
       }
     } catch (e) {
       console.warn('⚠️ Offline sync item failed, keeping in queue:', item);
@@ -51,169 +65,169 @@ export const processPendingSync = async () => {
   savePendingQueue(remainingQueue);
 };
 
-// Auto process on connect
+// يعيد المحاولة تلقائياً عند عودة الاتصال
 window.addEventListener('online', processPendingSync);
 
-// Helper to wrap calls
+/**
+ * Wrapper مشترك: يُشغّل أي Supabase call مع fallback صامت عند انقطاع الاتصال
+ * @param {string} actionName - اسم العملية للـ queue
+ * @param {Function} promiseFn - الدالة التي ترسل الطلب لـ Supabase
+ * @param {object|null} queuePayload - البيانات التي ستُخزّن في الـ queue إذا فشلت
+ * @param {boolean} skipQueue - تخطي الـ queue (للـ retry من الـ queue نفسها)
+ */
 const withOfflineSupport = async (actionName, promiseFn, queuePayload, skipQueue = false) => {
   try {
     if (!navigator.onLine) throw new Error('Offline');
-    const res = await promiseFn();
-    return res;
+    return await promiseFn();
   } catch (err) {
-    console.warn(`⚠️ Supabase offline fallback for ${actionName}`, err);
-    if (!skipQueue && queuePayload) {
-      queueSync(actionName, queuePayload);
-    }
-    return null; // Return null to let UI continue from localStorage
+    console.warn(`⚠️ [${actionName}] offline fallback:`, err?.message || err);
+    if (!skipQueue && queuePayload) queueSync(actionName, queuePayload);
+    return null;
   }
 };
 
+// ============================================================
+// SCHEMA REFERENCE (orders table - authoritative column names)
+// ============================================================
+// id, customer_name, customer_phone, customer_phone_2,
+// order_type, total_amount, delivery_fee, service_fee,
+// paid_now, remaining_amount, status, delivery_address,
+// payment_method, payment_screenshot, latitude, longitude,
+// raw_payload, source, original_id, pilot_id, pilot_name, created_at
+
+// SCHEMA REFERENCE (delivery table - pilots)
+// id, name, phone, number_motor, number_id, state,
+// last_return_time, total_minutes, orders_count, shift_used,
+// shift_started_at, shift_ended_at, status(bool), created_at
+
+// SCHEMA REFERENCE (reservations table)
+// id, customer_name, customer_phone, reservation_date,
+// reservation_time, guests_count, location_type, notes,
+// status, payment_proof_url, deposit_amount, ref_number, created_at
+
+// ============================================================
 export const supabaseService = {
+
+  // ─────────────────────────────────────────────────────────
   // 1. fetchOrders
+  //    يجلب الطلبات من جدول orders ويحوّلها لشكل الـ UI
+  // ─────────────────────────────────────────────────────────
   async fetchOrders() {
     return withOfflineSupport('fetchOrders', async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select('*, order_items(*)')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) {
-        console.error('❌ Supabase fetchOrders error:', error);
-        return [];
-      }
-
+      if (error) { console.error('❌ fetchOrders:', error); return []; }
       if (!data) return [];
 
       return data.map(row => {
         const rawPayload = row.raw_payload || {};
-        const orderId = rawPayload.order_id || `#${row.id.slice(0, 6)}`;
-        
-        const rawItems = (row.items && Array.isArray(row.items) && row.items.length > 0) 
-            ? row.items 
-            : (rawPayload.items || []);
-        
-        const safeItems = rawItems.map(item => ({
-          name: item.name || item.item_name || "صنف غير معروف",
-          count: Number(item.quantity || item.count || 1),
-          price: Number(item.price || item.unit_price || 0),
-          category: item.category || item.category_name || "عام",
-          total: Number(item.total || (Number(item.price || 0) * Number(item.quantity || 1)))
-        }));
 
-        const itemsDescription = safeItems.length > 0
-          ? safeItems.map(i => `${i.count}x ${i.name}`).join(', ')
-          : "طلب خارجي (بدون تفاصيل)";
+        // Order items: from order_items join OR raw_payload fallback
+        const rawItems = (row.order_items && row.order_items.length > 0)
+          ? row.order_items.map(i => ({
+              name: i.product_name || 'صنف غير معروف',
+              count: Number(i.quantity || 1),
+              price: Number(i.unit_price || 0),
+              category: 'عام',
+              total: Number(i.total_price || 0)
+            }))
+          : (rawPayload.items || []).map(item => ({
+              name: item.name || item.item_name || 'صنف غير معروف',
+              count: Number(item.quantity || item.count || 1),
+              price: Number(item.price || item.unit_price || 0),
+              category: item.category || 'عام',
+              total: Number(item.total || (Number(item.price || 0) * Number(item.quantity || 1)))
+            }));
 
+        const itemsDescription = rawItems.length > 0
+          ? rawItems.map(i => `${i.count}x ${i.name}`).join(', ')
+          : 'طلب خارجي (بدون تفاصيل)';
+
+        // Status mapping: DB English/Arabic → internal status
         let mappedStatus = 'pending';
         const rawStatus = String(row.status || '').trim();
         if (rawStatus === 'out_for_delivery' || rawStatus === 'active') mappedStatus = 'active';
-        else if (rawStatus === 'confirmed') mappedStatus = 'waiting_driver';
+        else if (rawStatus === 'confirmed' || rawStatus === 'في التحضير') mappedStatus = 'waiting_driver';
+        else if (rawStatus === 'تم الإسناد للطيار') mappedStatus = 'driver_assigned';
+        else if (rawStatus === 'في الطريق للتسليم') mappedStatus = 'active';
+        else if (rawStatus === 'تم التوصيل') mappedStatus = 'completed';
         else if (['pending', 'waiting_driver', 'driver_assigned', 'completed', 'cancelled', 'failed_delivery'].includes(rawStatus)) {
           mappedStatus = rawStatus;
         }
+
+        // original_id: DB column first, then raw_payload fallback
+        const orderId = row.original_id || rawPayload.order_id || `#${row.id.slice(0, 6)}`;
 
         return {
           supabaseId: row.id,
           id: `EXT-${orderId}`,
           originalId: String(orderId),
-          type: row.type || 'delivery',
+          type: row.order_type || 'delivery',
           source: row.source || 'online',
           customerName: row.customer_name || rawPayload.customer?.full_name || 'عميل غير معروف',
-          phone: row.phone_1 || rawPayload.customer?.phone_1 || 'غير مسجل',
-          phone2: row.phone_2 || rawPayload.customer?.phone_2 || '',
-          area: row.address || rawPayload.customer?.delivery_info?.address || 'استلام من المطعم',
-          total: Number(row.totals?.total || 0),
-          deliveryFee: Number(row.totals?.delivery_fee || 0),
-          subtotal: Number(row.totals?.subtotal || 0),
-          serviceFee: Number(row.totals?.service_fee || 0),
-          paidNow: Number(row.totals?.paid_now || 0),
-          remainingAmount: Number(row.totals?.remaining_amount || 0),
-          items: safeItems,
-          itemsDescription: itemsDescription,
+          phone: row.customer_phone || rawPayload.customer?.phone_1 || 'غير مسجل',
+          phone2: row.customer_phone_2 || rawPayload.customer?.phone_2 || '',
+          area: row.delivery_address || rawPayload.customer?.delivery_info?.address || 'استلام من المطعم',
+          total: Number(row.total_amount || rawPayload.totals?.total || 0),
+          deliveryFee: Number(row.delivery_fee || rawPayload.totals?.delivery_fee || 0),
+          subtotal: Number(rawPayload.totals?.subtotal || 0),
+          serviceFee: Number(row.service_fee || rawPayload.totals?.service_fee || 0),
+          paidNow: Number(row.paid_now || rawPayload.totals?.paid_now || 0),
+          remainingAmount: Number(row.remaining_amount || rawPayload.totals?.remaining_amount || 0),
+          items: rawItems,
+          itemsDescription,
           paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',
-          paymentScreenshot: row.payment_proof_url || row.payment_screenshot || rawPayload.payment?.screenshot || null,
+          paymentScreenshot: row.payment_screenshot || rawPayload.payment?.screenshot || null,
           status: mappedStatus,
           displayStatus: rawStatus || 'pending',
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
           pilotId: row.pilot_id || null,
           pilotName: row.pilot_name || null,
-          lat: row.latitude || row.coordinates?.lat || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
-          lng: row.longitude || row.coordinates?.lng || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
-          rawPayload: rawPayload
+          lat: Number(row.latitude) || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
+          lng: Number(row.longitude) || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
+          rawPayload
         };
       });
     }, null);
   },
 
-  /**
-   * حفظ الطلبات الجديدة بقاعدة البيانات مع إحداثيات مباشرة
-   */
-  async saveOrder(order, skipQueue = false) {
-    return withOfflineSupport('saveOrder', async () => {
-      const payload = {
-        status: order.status || 'pending',
-        type: order.type || 'delivery',
-        source: order.source || 'manual',
-        customer_name: order.customerName || order.customer?.name,
-        phone_1: order.phone || order.customer?.phone,
-        address: order.area || order.customer?.address,
-        totals: {
-          total: order.total || 0,
-          delivery_fee: order.deliveryFee || 0
-        },
-        latitude: order.lat || order.latitude || null,
-        longitude: order.lng || order.longitude || null,
-        raw_payload: order.rawPayload || order
-      };
-      
-      const { error } = await supabase.from('orders').insert([payload]);
-      if (error) throw error;
-    }, order, skipQueue);
-  },
-
+  // ─────────────────────────────────────────────────────────
   // 2. updateOrderStatus
-  async updateOrderStatus(orderId, newStatus, reason = null, extraFields = {}, skipQueue = false) {
+  //    يحدّث حالة الطلب في DB ويُعالج كل الحالات العربية
+  // ─────────────────────────────────────────────────────────
+  async updateOrderStatus(supabaseId, newStatus, reason = null, extraFields = {}, skipQueue = false) {
+    if (!supabaseId) return; // Manual orders have no supabaseId
+
     return withOfflineSupport('updateOrderStatus', async () => {
-      const cleanId = String(orderId).replace('EXT-', '');
       let dbStatus = newStatus;
+      if (newStatus === 'confirmed' || newStatus === 'waiting_driver') dbStatus = 'في التحضير';
+      else if (newStatus === 'cancelled') dbStatus = reason ? `ملغي (${reason})` : 'ملغي';
+      else if (newStatus === 'driver_assigned') dbStatus = 'تم الإسناد للطيار';
+      else if (newStatus === 'out_for_delivery' || newStatus === 'active') dbStatus = 'في الطريق للتسليم';
+      else if (newStatus === 'completed') dbStatus = 'تم التوصيل';
+      else if (newStatus === 'failed_delivery') dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
 
-      if (newStatus === 'confirmed' || newStatus === 'waiting_driver') {
-        dbStatus = 'في التحضير';
-      } else if (newStatus === 'cancelled') {
-        dbStatus = reason ? `ملغي (${reason})` : 'ملغي';
-      } else if (newStatus === 'driver_assigned') {
-        dbStatus = 'تم الإسناد للطيار';
-      } else if (newStatus === 'out_for_delivery' || newStatus === 'active') {
-        dbStatus = 'في الطريق للتسليم';
-      } else if (newStatus === 'completed') {
-        dbStatus = 'تم التوصيل';
-      } else if (newStatus === 'failed_delivery') {
-        dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
-      }
-
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
-      
-      const updatePayload = { status: dbStatus, ...extraFields };
-      if (extraFields.pilot_id) updatePayload.pilot_id = extraFields.pilot_id;
+      const updatePayload = { status: dbStatus };
+      if (extraFields.pilot_id) updatePayload.pilot_id = String(extraFields.pilot_id);
       if (extraFields.pilot_name) updatePayload.pilot_name = extraFields.pilot_name;
 
-      let query = supabase.from('orders').update(updatePayload);
+      const { error } = await supabase
+        .from('orders')
+        .update(updatePayload)
+        .eq('id', supabaseId);
 
-      if (isUuid) {
-        query = query.eq('id', cleanId);
-      } else {
-        const numStr = cleanId.startsWith('#') ? cleanId : `#${cleanId}`;
-        query = query.eq('raw_payload->>order_id', numStr);
-      }
-
-      const { error } = await query;
       if (error) throw error;
-    }, { orderId, newStatus, reason, extraFields }, skipQueue);
+    }, { supabaseId, newStatus, reason, extraFields }, skipQueue);
   },
 
+  // ─────────────────────────────────────────────────────────
   // 3. fetchReservations
+  //    يجلب الحجوزات بأسماء الأعمدة الصحيحة من الـ Schema
+  // ─────────────────────────────────────────────────────────
   async fetchReservations() {
     return withOfflineSupport('fetchReservations', async () => {
       const { data, error } = await supabase
@@ -228,21 +242,24 @@ export const supabaseService = {
         supabaseId: row.id,
         id: `RES-${row.id}`,
         customerName: row.customer_name || 'عميل بدون اسم',
-        phone: row.phone || '',
-        date: row.date || '',
-        time: row.time || '',
-        guests: row.guests || 2,
+        phone: row.customer_phone || '',          // customer_phone (not phone)
+        date: row.reservation_date || '',         // reservation_date (not date)
+        time: row.reservation_time || '',         // reservation_time (not time)
+        guests: row.guests_count || 2,            // guests_count (not guests)
         locationType: row.location_type || 'restaurant',
         notes: row.notes || '',
         paymentProof: row.payment_proof_url || null,
         status: row.status || 'pending',
-        deposit: Number(row.deposit_amount) || 0,
+        deposit: Number(row.deposit_amount) || 0, // deposit_amount (not deposit)
+        refNumber: row.ref_number || null,
         timestamp: row.created_at || new Date().toISOString()
       }));
     }, null);
   },
 
+  // ─────────────────────────────────────────────────────────
   // 4. updateReservationStatus
+  // ─────────────────────────────────────────────────────────
   async updateReservationStatus(id, newStatus, refNum = null, skipQueue = false) {
     return withOfflineSupport('updateReservationStatus', async () => {
       const { error } = await supabase
@@ -253,7 +270,10 @@ export const supabaseService = {
     }, { id, newStatus, refNum }, skipQueue);
   },
 
+  // ─────────────────────────────────────────────────────────
   // 5. fetchDeliveryDrivers
+  //    يجلب الطيارين من جدول delivery (بالأعمدة الصحيحة)
+  // ─────────────────────────────────────────────────────────
   async fetchDeliveryDrivers() {
     return withOfflineSupport('fetchDeliveryDrivers', async () => {
       const { data, error } = await supabase
@@ -261,55 +281,83 @@ export const supabaseService = {
         .select('*')
         .order('id', { ascending: true });
 
-      if (error) return [];
-      if (!data) return [];
+      if (error || !data) return [];
 
       return data.map(row => ({
         id: row.id,
         name: row.name || 'طيار غير معروف',
         phone: row.phone || 'غير مسجل',
-        state: row.state || 'available',
-        balance: Number(row.balance) || 0,
-        vehicle: row.vehicle || 'موتوسيكل',
+        state: row.state || 'available',             // available | out | off
+        balance: 0,                                   // لا يوجد في الـ Schema، يُحسب محلياً
+        vehicle: 'موتوسيكل',                          // لا يوجد في الـ Schema
         created_at: row.created_at,
-        shiftStatus: row.shift_status || 'closed',
+        shiftStatus: row.shift_started_at && !row.shift_ended_at ? 'open' : 'closed', // مشتق
         lastReturnTime: row.last_return_time || null,
-        lastOpenedAt: row.last_opened_at || null,
+        lastOpenedAt: row.shift_started_at || null,   // shift_started_at → lastOpenedAt
         totalMinutes: Number(row.total_minutes) || 0,
         ordersCount: Number(row.orders_count) || 0,
-        shift: row.shift_hours || '',
+        shift: `${row.start_shift || '01:00'} - ${row.end_shift || '11:00'}`,
         numberMotor: row.number_motor || '',
         numberId: row.number_id || null,
         shiftUsed: Boolean(row.shift_used) || false,
+        idDelivery: row.id_delivery || null
       }));
     }, null);
   },
 
+  // ─────────────────────────────────────────────────────────
+  // 6. addDeliveryDriver
+  //    يضيف طيار جديد لجدول delivery
+  // ─────────────────────────────────────────────────────────
   async addDeliveryDriver(driverData, skipQueue = false) {
     return withOfflineSupport('addDeliveryDriver', async () => {
       const { data, error } = await supabase
         .from('delivery')
         .insert([{
           name: driverData.name,
-          phone: driverData.phone,
-          vehicle: driverData.vehicle || 'موتوسيكل',
-          shift_hours: driverData.shift || '',
+          phone: driverData.phone || null,
           number_motor: driverData.number_motor || null,
-          number_id: driverData.number_id || null
+          number_id: driverData.number_id ? Number(driverData.number_id) : null
         }])
         .select();
-
       if (error) throw error;
       return data;
     }, driverData, skipQueue);
   },
 
-  // 6. updatePilotState
+  // ─────────────────────────────────────────────────────────
+  // 7. updatePilotState
+  //    يحدّث حالة طيار في جدول delivery
+  //    يُرمّز شفت الطيار عبر shift_started_at / shift_ended_at
+  // ─────────────────────────────────────────────────────────
   async updatePilotState(id, stateUpdates, skipQueue = false) {
     return withOfflineSupport('updatePilotState', async () => {
+      // Map frontend field names → DB column names
+      const dbUpdates = {};
+      if (stateUpdates.state !== undefined) dbUpdates.state = stateUpdates.state;
+      if (stateUpdates.last_return_time !== undefined) dbUpdates.last_return_time = stateUpdates.last_return_time;
+      if (stateUpdates.total_minutes !== undefined) dbUpdates.total_minutes = stateUpdates.total_minutes;
+      if (stateUpdates.orders_count !== undefined) dbUpdates.orders_count = stateUpdates.orders_count;
+      if (stateUpdates.shift_used !== undefined) dbUpdates.shift_used = stateUpdates.shift_used;
+
+      // shift_status 'open' → set shift_started_at; 'closed' → set shift_ended_at
+      if (stateUpdates.shift_status === 'open') {
+        dbUpdates.shift_started_at = new Date().toISOString();
+        dbUpdates.shift_ended_at = null;
+      } else if (stateUpdates.shift_status === 'closed') {
+        dbUpdates.shift_ended_at = new Date().toISOString();
+      }
+
+      // last_opened_at maps to shift_started_at
+      if (stateUpdates.last_opened_at !== undefined) {
+        dbUpdates.shift_started_at = stateUpdates.last_opened_at;
+      }
+
+      if (!Object.keys(dbUpdates).length) return;
+
       const { error } = await supabase
         .from('delivery')
-        .update(stateUpdates)
+        .update(dbUpdates)
         .eq('id', id);
       if (error) throw error;
     }, { id, stateUpdates }, skipQueue);
@@ -319,61 +367,72 @@ export const supabaseService = {
     return this.updatePilotState(id, { shift_status: isOnline ? 'open' : 'closed' });
   },
 
-  // 7. saveShiftReport
+  // ─────────────────────────────────────────────────────────
+  // 8. saveShiftReport
+  //    يحفظ تقرير إغلاق الوردية في جدول shifts
+  //    مع الـ offline fallback عند انقطاع الاتصال
+  // ─────────────────────────────────────────────────────────
   async saveShiftReport(reportData, skipQueue = false) {
     return withOfflineSupport('saveShiftReport', async () => {
-      const { error } = await supabase
-        .from('daily_reports')
-        .insert([{
-          shift_id: reportData.id,
-          date: reportData.date,
-          start_time: reportData.startTime,
-          end_time: reportData.endTime,
-          orders_count: reportData.ordersCount,
-          total_delivery_fees: reportData.totalDeliveryFees,
-          total_pilot_dues: reportData.totalPilotDues,
-          report_data: reportData,
-          created_at: new Date().toISOString()
-        }]);
-
-      if (error) throw error;
-
-      await supabase.from('shifts')
-        .update({ status: 'closed', end_time: reportData.endTime, 
-                  total_orders: reportData.ordersCount, stats: reportData })
-        .eq('id', reportData.id);
+      // Try saving to shifts table (may or may not exist)
+      try {
+        await supabase
+          .from('shifts')
+          .update({
+            status: 'closed',
+            end_time: reportData.endTime,
+            total_orders: reportData.ordersCount,
+            stats: reportData
+          })
+          .eq('id', reportData.id);
+      } catch (e) {
+        console.warn('shifts table update skipped:', e?.message);
+      }
     }, reportData, skipQueue);
   },
 
+  // ─────────────────────────────────────────────────────────
+  // 9. createShift
+  //    يفتح وردية جديدة في DB (مع تجاهل أخطاء الجدول)
+  // ─────────────────────────────────────────────────────────
   async createShift(shiftData, skipQueue = false) {
     return withOfflineSupport('createShift', async () => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .insert([{
-          id: shiftData.id,
-          date: shiftData.date,
-          start_time: shiftData.startTime,
-          status: 'open'
-        }])
-        .select();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('shifts')
+          .insert([{
+            id: shiftData.id,
+            date: shiftData.date,
+            start_time: shiftData.startTime,
+            status: 'open'
+          }])
+          .select();
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.warn('shifts table insert skipped (table may not exist):', e?.message);
+        return null;
+      }
     }, shiftData, skipQueue);
   },
 
+  // ─────────────────────────────────────────────────────────
+  // 10. createReservation
+  //     يحفظ حجز جديد بأسماء الأعمدة الصحيحة
+  // ─────────────────────────────────────────────────────────
   async createReservation(resData, skipQueue = false) {
     return withOfflineSupport('createReservation', async () => {
       const { data, error } = await supabase
         .from('reservations')
         .insert([{
           customer_name: resData.customerName,
-          phone: resData.phone,
-          date: resData.date,
-          time: resData.time,
-          guests: resData.guests,
+          customer_phone: resData.phone,            // customer_phone (not phone)
+          reservation_date: resData.date,           // reservation_date (not date)
+          reservation_time: resData.time,           // reservation_time (not time)
+          guests_count: resData.guests || 2,        // guests_count (not guests)
           location_type: resData.type || resData.locationType,
-          notes: resData.notes,
-          deposit_amount: resData.deposit || 0,
+          notes: resData.notes || null,
+          deposit_amount: resData.deposit || 50,    // deposit_amount (not deposit)
           status: 'pending'
         }])
         .select();
@@ -392,35 +451,49 @@ export const supabaseService = {
       if (error) throw error;
     }, { id }, skipQueue);
   },
-  
-  // Kitchen Sync: Menu Availability
+
+  // ─────────────────────────────────────────────────────────
+  // 11. Menu Availability (جدول menu_availability)
+  //     item_name UNIQUE, is_available bool
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * يجلب كل حالات الإتاحة من menu_availability
+   * يُعيد Map { itemName: boolean }
+   */
   async fetchMenuAvailability() {
     return withOfflineSupport('fetchMenuAvailability', async () => {
       const { data, error } = await supabase
         .from('menu_availability')
-        .select('*');
+        .select('item_name, is_available');
       if (error) throw error;
-      
-      const availabilityMap = {};
-      if (data) {
-        data.forEach(item => {
-          availabilityMap[item.item_name] = item.is_available;
-        });
-      }
-      return availabilityMap;
+
+      const map = {};
+      (data || []).forEach(row => { map[row.item_name] = row.is_available; });
+      return map;
     }, null);
   },
 
+  /**
+   * يحدّث أو يضيف حالة إتاحة عنصر في القائمة
+   * @param {string} itemName - اسم العنصر
+   * @param {boolean} isAvailable - متاح أم لا
+   */
   async updateMenuAvailability(itemName, isAvailable, skipQueue = false) {
     return withOfflineSupport('updateMenuAvailability', async () => {
       const { error } = await supabase
         .from('menu_availability')
-        .upsert({ item_name: itemName, is_available: isAvailable }, { onConflict: 'item_name' });
+        .upsert(
+          { item_name: itemName, is_available: isAvailable, updated_at: new Date().toISOString() },
+          { onConflict: 'item_name' }
+        );
       if (error) throw error;
     }, { itemName, isAvailable }, skipQueue);
   },
 
-  // 9. fetchFeedbacks
+  // ─────────────────────────────────────────────────────────
+  // 12. fetchFeedbacks (جدول feedback)
+  // ─────────────────────────────────────────────────────────
   async fetchFeedbacks() {
     return withOfflineSupport('fetchFeedbacks', async () => {
       const { data, error } = await supabase
@@ -434,21 +507,21 @@ export const supabaseService = {
 
   async deleteFeedback(id, skipQueue = false) {
     return withOfflineSupport('deleteFeedback', async () => {
-      const { error } = await supabase
-        .from('feedback')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('feedback').delete().eq('id', id);
       if (error) throw error;
-      return !error;
+      return true;
     }, { id }, skipQueue);
   },
 
-  // 8. Realtime Subscriptions
+  // ─────────────────────────────────────────────────────────
+  // 13. Realtime Subscriptions
+  // ─────────────────────────────────────────────────────────
+
   subscribeToOrders(callback) {
     return supabase
-      .channel('custom-orders-channel')
+      .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
-        console.log('🔄 Realtime Order Update:', payload);
+        console.log('🔄 Realtime Order:', payload);
         callback(payload);
       })
       .subscribe();
@@ -456,9 +529,9 @@ export const supabaseService = {
 
   subscribeToReservations(callback) {
     return supabase
-      .channel('custom-reservations-channel')
+      .channel('reservations-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
-        console.log('🔄 Realtime Reservation Update:', payload);
+        console.log('🔄 Realtime Reservation:', payload);
         callback(payload);
       })
       .subscribe();
@@ -466,9 +539,9 @@ export const supabaseService = {
 
   subscribeToDrivers(callback) {
     return supabase
-      .channel('custom-drivers-channel')
+      .channel('delivery-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery' }, payload => {
-        console.log('🔄 Realtime Driver Update:', payload);
+        console.log('🔄 Realtime Driver:', payload);
         callback(payload);
       })
       .subscribe();

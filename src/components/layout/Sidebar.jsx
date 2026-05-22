@@ -1,10 +1,24 @@
-import React from 'react';
-import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare, Wifi, WifiOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
 
+
 const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenSecurity }) => {
     const { isShiftOpen, openShift, closeShift, orders, userRole, setUserRole, isThermalPrintMode, setIsThermalPrintMode } = useApp();
+
+    // مؤشر الاتصال: يتابع حالة الشبكة بدون أي مكتبة خارجية
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const pendingCount = orders.filter(o => ['pending', 'pending_timer', 'waiting_driver'].includes(o.status)).length;
 
@@ -84,7 +98,27 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                 ))}
             </div>
 
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+            {/* 🌐 مؤشر حالة الاتصال بالإنترنت */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 12px', borderRadius: '10px',
+                background: isOnline ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${isOnline ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                fontSize: '0.8rem', fontWeight: '600',
+                color: isOnline ? '#34d399' : '#f87171',
+                transition: 'all 0.4s'
+            }}>
+                {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+                <span>{isOnline ? 'متصل بالإنترنت' : 'وضع بدون إنترنت'}</span>
+                <div style={{
+                    marginRight: 'auto', width: '7px', height: '7px', borderRadius: '50%',
+                    background: isOnline ? '#10b981' : '#ef4444',
+                    boxShadow: isOnline ? '0 0 6px #10b981' : '0 0 6px #ef4444',
+                    animation: 'pulse 2s infinite'
+                }} />
+            </div>
+
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
                 {/* ⚙️ إدارة الشيفت للمدير والكاشير */}
                 {(userRole === 'admin' || userRole === 'casher') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
