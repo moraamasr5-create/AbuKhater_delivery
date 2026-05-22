@@ -66,7 +66,7 @@ export const supabaseService = {
           items: safeItems,
           itemsDescription: itemsDescription,
           paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',
-          paymentScreenshot: row.payment_proof_url || rawPayload.payment?.screenshot || null,
+          paymentScreenshot: row.payment_proof_url || row.payment_screenshot || rawPayload.payment?.screenshot || null,
           status: mappedStatus,
           displayStatus: rawStatus || 'pending',
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
