@@ -845,13 +845,31 @@ const [pilots, setPilots] = useState(() => {
       setReservations(prev => [newRes, ...prev]);
       logAction('RES_CREATE', `Reservation for ${resData.customerName}`, 'Cashier');
     } else {
-      alert('حدث خطأ أثناء حفظ الحجز.');
+      // حالة العمل بدون إنترنت (Offline Support)
+      if (!navigator.onLine) {
+        const tempId = `TEMP-${Date.now()}`;
+        const newRes = {
+          id: tempId,
+          timestamp: getSafeISOTime(),
+          status: 'pending',
+          deposit: resData.deposit || 50,
+          ...resData
+        };
+        setReservations(prev => [newRes, ...prev]);
+        logAction('RES_CREATE', `Reservation for ${resData.customerName} (سيتم المزامنة لاحقاً)`, 'Cashier');
+      } else {
+        alert('حدث خطأ أثناء حفظ الحجز.');
+      }
     }
   };
 
-  const confirmReservation = (id, refNum, paymentProof = null) => {
+  const confirmReservation = async (id, refNum, paymentProof = null) => {
     const existing = reservations.find(r => r.id === id);
     if (!existing || existing.status === 'confirmed') return; // Idempotent check
+
+    if (existing.supabaseId) {
+      await supabaseService.updateReservationStatus(existing.supabaseId, 'confirmed', refNum, paymentProof);
+    }
 
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', refNumber: refNum, paymentProof, confirmedAt: getSafeISOTime() } : r));
     logAction('RES_CONFIRM', `Reservation ${id} confirmed with Ref: ${refNum}`, 'Manager');
