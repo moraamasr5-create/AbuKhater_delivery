@@ -51,6 +51,20 @@ const MATAREYA_AREAS = AREAS_METADATA.map(a => a.name).concat(['اخرى (إدخ
 
 const MANAGERS = ['أ/عبـدالله', 'أ/فتحـي', 'مدير3', 'الفرع الثاني'];
 
+const formatShift = (shiftStr) => {
+  if (!shiftStr || shiftStr === 'غير محدد') return 'غير محدد';
+  return shiftStr.split('-').map(t => {
+    const time = t.trim();
+    if (!time) return '';
+    let [h, m] = time.split(':');
+    if (!h || !m) return time;
+    h = parseInt(h, 10);
+    const suffix = h >= 12 ? 'م' : 'ص';
+    h = h % 12 || 12;
+    return `${h}:${m}${suffix}`;
+  }).join(' - ');
+};
+
 const PilotManagement = () => {
   const { pilots, togglePilotShift, addNewPilot, deletePilot } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -224,7 +238,14 @@ const PilotManagement = () => {
                       {pilot.shiftStatus === 'open' ? 'متصل 🟢' : 'غير متصل ⚪'}
                     </span>
                   </h4>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{pilot.phone}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <a href={`tel:${pilot.phone}`} style={{ color: 'var(--primary)', fontSize: '0.95rem', margin: 0, textDecoration: 'none', fontWeight: 'bold' }} title="اضغط للاتصال">
+                      {pilot.phone}
+                    </a>
+                    <button onClick={() => { navigator.clipboard.writeText(pilot.phone); alert('تم نسخ الرقم بنجاح ✅'); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--text-main)' }} title="نسخ الرقم">
+                      نسخ 📋
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={() => deletePilot(pilot.id)}
@@ -238,7 +259,7 @@ const PilotManagement = () => {
               </div>
 
               <div className="grid-2" style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', gap: '8px' }}>
-                <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>الوردية</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {pilot.shift || 'غير محدد'}</div></div>
+                <div><label style={{ fontSize: '0.7rem', opacity: 0.6 }}>معاد الطيار</label><div style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {formatShift(pilot.shift)}</div></div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <button
