@@ -55,6 +55,12 @@ export const processPendingSync = async () => {
         await supabaseService.createShift(item.payload, true);
       } else if (item.action === 'updateMenuAvailability') {
         await supabaseService.updateMenuAvailability(item.payload.itemName, item.payload.isAvailable, true);
+      } else if (item.action === 'createReservation') {
+        await supabaseService.createReservation(item.payload, true);
+      } else if (item.action === 'updateReservationStatus') {
+        await supabaseService.updateReservationStatus(item.payload.id, item.payload.newStatus, item.payload.refNum, item.payload.paymentProof, true);
+      } else if (item.action === 'deleteReservation') {
+        await supabaseService.deleteReservation(item.payload.id, true);
       }
     } catch (e) {
       console.warn('⚠️ Offline sync item failed, keeping in queue:', item);
@@ -260,14 +266,14 @@ export const supabaseService = {
   // ─────────────────────────────────────────────────────────
   // 4. updateReservationStatus
   // ─────────────────────────────────────────────────────────
-  async updateReservationStatus(id, newStatus, refNum = null, skipQueue = false) {
+  async updateReservationStatus(id, newStatus, refNum = null, paymentProof = null, skipQueue = false) {
     return withOfflineSupport('updateReservationStatus', async () => {
       const { error } = await supabase
         .from('reservations')
-        .update({ status: newStatus, ref_number: refNum })
+        .update({ status: newStatus, ref_number: refNum, payment_proof_url: paymentProof })
         .eq('id', id);
       if (error) throw error;
-    }, { id, newStatus, refNum }, skipQueue);
+    }, { id, newStatus, refNum, paymentProof }, skipQueue);
   },
 
   // ─────────────────────────────────────────────────────────

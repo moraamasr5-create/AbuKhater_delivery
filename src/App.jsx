@@ -1125,7 +1125,7 @@ const ReservationModal = ({ onClose }) => {
   const { addReservation } = useApp();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    type: 'restaurant', customerName: '', phone: '',
+    locationType: 'restaurant', customerName: '', phone: '',
     date: new Date().toISOString().split('T')[0], time: '14:00',
     guests: 2, deposit: 50, notes: ''
   });
@@ -1146,7 +1146,7 @@ const ReservationModal = ({ onClose }) => {
             <>
               <div className="grid-2" style={{ gap: '12px' }}>
                 {['restaurant', 'cafe'].map(t => (
-                  <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t })} className="card" style={{ padding: '16px', textAlign: 'center', border: formData.type === t ? '2px solid #8b5cf6' : '1px solid var(--border)', background: formData.type === t ? 'rgba(139, 92, 246, 0.1)' : 'transparent', color: 'white' }}>
+                  <button key={t} type="button" onClick={() => setFormData({ ...formData, locationType: t })} className="card" style={{ padding: '16px', textAlign: 'center', border: formData.locationType === t ? '2px solid #8b5cf6' : '1px solid var(--border)', background: formData.locationType === t ? 'rgba(139, 92, 246, 0.1)' : 'transparent', color: 'white' }}>
                     {t === 'restaurant' ? 'مطعم' : 'كافيه'}
                   </button>
                 ))}
