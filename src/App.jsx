@@ -1644,7 +1644,7 @@ function App() {
             {activeTab === 'dashboard' && (userRole === 'admin' || userRole === 'casher') && <DashboardView />}
             {activeTab === 'inbox' && <OrderInbox onReedit={handleReedit} />}
             {activeTab === 'pilots' && (userRole === 'admin' || userRole === 'casher') && <PilotManagement />}
-            {activeTab === 'reservations' && (userRole === 'admin' || userRole === 'casher') && <ReservationView />}
+            {activeTab === 'reservations' && (userRole === 'casher') && <ReservationView />}
             {activeTab === 'feedback' && userRole === 'admin' && <FeedbackView />}
             {activeTab === 'reports' && userRole === 'admin' && <ReportsView />}
           </div>
