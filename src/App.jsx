@@ -1152,7 +1152,7 @@ const ReservationModal = ({ onClose }) => {
                 ))}
               </div>
               <input required style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="اسم العميل" value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} />
-              <input required style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="رقم الهاتف" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              <input required style={{ background: 'var(--bg-dark)', color: 'white', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)' }} placeholder="رقم الهاتف" value={formData.phone} maxLength={11} onChange={e => { if (e.target.value.length <= 11) setFormData({ ...formData, phone: e.target.value }); }} />
             </>
           ) : (
             <>
