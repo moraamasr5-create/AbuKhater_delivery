@@ -30,7 +30,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
             id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['casher', 'driver']
         },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
-{ id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['admin', 'casher'], special: true },
+{ id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['casher'], special: true },
         { id: 'feedback', label: 'الشكاوى والمقترحات', icon: MessageSquare, roles: ['admin'] },
         { id: 'reports', label: 'التقارير', icon: BarChart3, roles: ['admin'] },
     ];
