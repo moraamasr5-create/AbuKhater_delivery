@@ -112,6 +112,24 @@ const withOfflineSupport = async (actionName, promiseFn, queuePayload, skipQueue
 // status, payment_proof_url, deposit_amount, ref_number, created_at
 
 // ============================================================
+// TIME HELPERS
+// ============================================================
+
+/**
+ * Converts a 24-h time string ("HH:MM:SS" or "HH:MM") → 12-h short format
+ * e.g. "08:00:00" → "8:00A"  |  "22:00:00" → "10:00P"
+ */
+const formatTime = (t) => {
+  if (!t) return null;
+  const [hourStr, minuteStr] = t.split(':');
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr || '00';
+  const ampm = hour >= 12 ? 'P' : 'A';
+  hour = hour % 12 || 12;
+  return `${hour}:${minute}${ampm}`;
+};
+
+// ============================================================
 export const supabaseService = {
 
   // ─────────────────────────────────────────────────────────
@@ -462,7 +480,9 @@ export const supabaseService = {
 
   async deleteReservation(id, skipQueue = false) {
     return withOfflineSupport('deleteReservation', async () => {
-      const cleanId = String(id).replace('RES-', '');
+      const cleanId = String(id).replace(/^RES-/, '');
+      const isUuid = /^[0-9a-f-]{36}$/i.test(cleanId);
+      if (!isUuid) { console.warn('Invalid reservation ID for deletion:', cleanId); return; }
       const { error } = await supabase
         .from('reservations')
         .delete()

@@ -1,5 +1,5 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService, processPendingSync } from '../services/supabaseService';
 import { printerService } from '../services/printerService';
@@ -32,7 +32,7 @@ const mergePilots = (prevPilots, fetchedPilots) => {
   const mergedFetched = fetchedPilots.map(fp => {
     const existing = prevPilots.find(p => p.id === fp.id);
     if (!existing) return fp;
-    const LOCAL_PILOT_FIELDS = ['ordersCount', 'totalMinutes', 'balance', 'shiftStatus', 'state', 'lastReturnTime', 'shiftUsed', 'lastOpenedAt'];
+    const LOCAL_PILOT_FIELDS = ['ordersCount', 'totalMinutes', 'balance', 'shiftStatus', 'state', 'lastReturnTime', 'shiftUsed', 'lastOpenedAt', 'shift'];
     const mergedFields = {};
     LOCAL_PILOT_FIELDS.forEach(f => {
       if (existing[f] !== undefined) {
@@ -939,6 +939,8 @@ const [pilots, setPilots] = useState(() => {
     return { success: false, error: 'تم الإلغاء' };
   };
 
+  const computedStats = useMemo(() => activeStats(), [orders, pilots, reservations, currentShift]);
+
   return (
     <AppContext.Provider value={{
       orders, pilots, currentShift, dailyReports, auditLogs, reservations,
@@ -947,7 +949,8 @@ const [pilots, setPilots] = useState(() => {
       openShift, closeShift, addOrder, deleteOrder, cancelOrder, confirmOrder, completeOrder, failDelivery, togglePilotShift, updateOrder, addNewPilot, deletePilot,
       addReservation, confirmReservation, deleteReservation,
       isShiftOpen: currentShift?.status === 'open',
-      activeStats: activeStats(),
+      activeStats: computedStats,
+      recalcStats: activeStats,     // expose raw function for manual recalc if needed
       assignPilot, startDelivery, getSuggestedPilot,
       sendToN8N, syncExternalOrders
     }}>
