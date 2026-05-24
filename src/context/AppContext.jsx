@@ -99,7 +99,7 @@ export const AppProvider = ({ children }) => {
       return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
     } catch { return []; }
   });
-const [pilots, setPilots] = useState(() => {
+  const [pilots, setPilots] = useState(() => {
     try {
       const saved = localStorage.getItem("delivery_pilots");
       if (saved && saved !== "undefined") {
@@ -532,7 +532,7 @@ const [pilots, setPilots] = useState(() => {
     if (!order || ['driver_assigned', 'active', 'completed', 'cancelled', 'failed_delivery'].includes(order.status)) return;
 
     const safeDeliveryId = !isNaN(Number(pilotId)) ? Number(pilotId) : null;
-    
+
     setOrders(prev => prev.map(o =>
       o.id === orderId
         ? { ...o, status: 'driver_assigned', pilotId, deliveryId: safeDeliveryId, assignedAt: getSafeISOTime() }
@@ -541,8 +541,8 @@ const [pilots, setPilots] = useState(() => {
     const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
     if (order.supabaseId) {
-      updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { 
-        pilot_id: String(pilotId), 
+      updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, {
+        pilot_id: String(pilotId),
         pilot_name: pilotName,
         delivery_id: safeDeliveryId
       });
@@ -610,7 +610,7 @@ const [pilots, setPilots] = useState(() => {
         return p;
       }));
 
-      const returnUpdates = nextState === 'available' 
+      const returnUpdates = nextState === 'available'
         ? { state: 'available', last_return_time: nowTime }
         : { state: 'out' };
       supabaseService.updatePilotState(order.pilotId, returnUpdates);
@@ -651,7 +651,7 @@ const [pilots, setPilots] = useState(() => {
         return p;
       }));
 
-      const returnUpdates = nextState === 'available' 
+      const returnUpdates = nextState === 'available'
         ? { state: 'available', last_return_time: nowTime }
         : { state: 'out' };
       supabaseService.updatePilotState(order.pilotId, returnUpdates);
@@ -686,11 +686,11 @@ const [pilots, setPilots] = useState(() => {
     // Call Supabase to update status
     await supabaseService.updatePilotState(pilotId, {
       shift_status: newStatus,
-      ...(newStatus === 'open' ? { 
-        state: 'available', 
+      ...(newStatus === 'open' ? {
+        state: 'available',
         last_return_time: getSafeISOTime(),
-        last_opened_at: getSafeISOTime() 
-      } : { 
+        last_opened_at: getSafeISOTime()
+      } : {
         state: 'off',
         last_opened_at: null,
         shift_used: true,
@@ -787,7 +787,7 @@ const [pilots, setPilots] = useState(() => {
         }
       });
 
-      const attendancePay = Math.floor(totalMinutes / 36) * 15;
+      const attendancePay = Math.floor(totalMinutes / 34) * 15;
 
       return {
         ...p,
