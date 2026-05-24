@@ -140,7 +140,7 @@ export const supabaseService = {
     return withOfflineSupport('fetchOrders', async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('*, order_items(*)')
+        .select('*, order_items(*), delivery:delivery_id(id, name, phone, state)')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -211,6 +211,8 @@ export const supabaseService = {
           timestamp: row.created_at || rawPayload.timestamp || new Date().toISOString(),
           pilotId: row.pilot_id || null,
           pilotName: row.pilot_name || null,
+          deliveryId: row.delivery_id || null,
+          delivery: row.delivery || null,
           lat: Number(row.latitude) || rawPayload.customer?.delivery_info?.coordinates?.lat || null,
           lng: Number(row.longitude) || rawPayload.customer?.delivery_info?.coordinates?.lon || null,
           rawPayload
@@ -236,8 +238,9 @@ export const supabaseService = {
       else if (newStatus === 'failed_delivery') dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
 
       const updatePayload = { status: dbStatus };
-      if (extraFields.pilot_id) updatePayload.pilot_id = String(extraFields.pilot_id);
-      if (extraFields.pilot_name) updatePayload.pilot_name = extraFields.pilot_name;
+      if (extraFields.pilot_id !== undefined) updatePayload.pilot_id = String(extraFields.pilot_id);
+      if (extraFields.pilot_name !== undefined) updatePayload.pilot_name = extraFields.pilot_name;
+      if (extraFields.delivery_id !== undefined) updatePayload.delivery_id = extraFields.delivery_id;
 
       const { error } = await supabase
         .from('orders')

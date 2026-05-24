@@ -223,7 +223,7 @@ const [pilots, setPilots] = useState(() => {
               logAction('LIVE_SYNC', `Supabase Sync: Received ${newOrdersForAudio.length} new orders`, 'System');
             }
 
-            const LOCAL_ONLY_FIELDS = ['pilotId', 'assignedAt', 'confirmedAt', 'startTime', 'endTime', 'failureReason', 'cancellationReason', 'cancelledAt', 'logs', 'shiftId'];
+            const LOCAL_ONLY_FIELDS = ['pilotId', 'deliveryId', 'assignedAt', 'confirmedAt', 'startTime', 'endTime', 'failureReason', 'cancellationReason', 'cancelledAt', 'logs', 'shiftId'];
 
             const mergedOrders = fetchedOrders.map(fo => {
               const existing = prev.find(o => (o.originalId || o.id) === fo.originalId);
@@ -531,22 +531,28 @@ const [pilots, setPilots] = useState(() => {
     const order = orders.find(o => o.id === orderId);
     if (!order || ['driver_assigned', 'active', 'completed', 'cancelled', 'failed_delivery'].includes(order.status)) return;
 
+    const safeDeliveryId = !isNaN(Number(pilotId)) ? Number(pilotId) : null;
+    
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'driver_assigned', pilotId, assignedAt: getSafeISOTime() }
+        ? { ...o, status: 'driver_assigned', pilotId, deliveryId: safeDeliveryId, assignedAt: getSafeISOTime() }
         : o
     ));
     const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
     if (order.supabaseId) {
-      updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { pilot_id: String(pilotId), pilot_name: pilotName });
+      updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, { 
+        pilot_id: String(pilotId), 
+        pilot_name: pilotName,
+        delivery_id: safeDeliveryId
+      });
     }
   };
 
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
   const startDelivery = (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || !order.pilotId || order.status === 'active' || order.status === 'completed') return;
+    if (!order || !(order.deliveryId || order.pilotId) || order.status === 'active' || order.status === 'completed') return;
 
     setOrders(prev => prev.map(o =>
       o.id === orderId
@@ -556,13 +562,13 @@ const [pilots, setPilots] = useState(() => {
 
     // Mark Pilot as OUT
     setPilots(prev => prev.map(p =>
-      String(p.id) === String(order.pilotId)
+      String(p.id) === String(order.deliveryId || order.pilotId)
         ? { ...p, state: 'out' }
         : p
     ));
 
     if (order.supabaseId) {
-      supabaseService.updatePilotState(order.pilotId, { state: 'out' });
+      supabaseService.updatePilotState(order.deliveryId || order.pilotId, { state: 'out' });
     }
 
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
@@ -587,12 +593,13 @@ const [pilots, setPilots] = useState(() => {
     ));
 
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
-    if (order.pilotId) {
-      const otherActive = orders.some(o => String(o.pilotId) === String(order.pilotId) && o.status === 'active' && o.id !== orderId);
+    const pilotIdToUse = order.deliveryId || order.pilotId;
+    if (pilotIdToUse) {
+      const otherActive = orders.some(o => String(o.deliveryId || o.pilotId) === String(pilotIdToUse) && o.status === 'active' && o.id !== orderId);
       const nextState = otherActive ? 'out' : 'available';
 
       setPilots(prev => prev.map(p => {
-        if (String(p.id) === String(order.pilotId)) {
+        if (String(p.id) === String(pilotIdToUse)) {
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
@@ -627,12 +634,13 @@ const [pilots, setPilots] = useState(() => {
     ));
 
     // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
-    if (order.pilotId) {
-      const otherActive = orders.some(o => String(o.pilotId) === String(order.pilotId) && o.status === 'active' && o.id !== orderId);
+    const pilotIdToUse = order.deliveryId || order.pilotId;
+    if (pilotIdToUse) {
+      const otherActive = orders.some(o => String(o.deliveryId || o.pilotId) === String(pilotIdToUse) && o.status === 'active' && o.id !== orderId);
       const nextState = otherActive ? 'out' : 'available';
 
       setPilots(prev => prev.map(p => {
-        if (String(p.id) === String(order.pilotId)) {
+        if (String(p.id) === String(pilotIdToUse)) {
           const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
