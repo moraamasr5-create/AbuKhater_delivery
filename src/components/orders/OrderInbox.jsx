@@ -320,7 +320,7 @@ const OrderInbox = ({ onReedit }) => {
                                                     {/* 🟡 Location Button */}
                                                     {normalized.lat && normalized.lng && (
                                                         <button
-                                                            onClick={() => window.open(`https://www.google.com/maps?q=${normalized.lat},${normalized.lng}`, '_blank')}
+                                                            onClick={() => window.open(`https://www.google.com/maps/@${normalized.lat},${normalized.lng},17z/data=!3m1!1e3`, '_blank')}
                                                             className="btn-primary hover-scale"
                                                             style={{
                                                                 padding: '6px 16px', fontSize: '0.85rem', background: '#f59e0b',
@@ -432,7 +432,7 @@ const OrderInbox = ({ onReedit }) => {
                                                     {/* 📍 Location Button (Prominent Map Access) */}
                                                     {order.lat && order.lng && (
                                                         <button
-                                                            onClick={() => window.open(`https://www.google.com/maps?q=${order.lat},${order.lng}`, '_blank')}
+                                                            onClick={() => window.open(`https://www.google.com/maps/@${order.lat},${order.lng},17z/data=!3m1!1e3`, '_blank')}
                                                             className="btn-primary hover-scale"
                                                             style={{
                                                                 padding: '8px 16px',
