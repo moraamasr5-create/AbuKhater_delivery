@@ -787,7 +787,7 @@ export const AppProvider = ({ children }) => {
         }
       });
 
-      const attendancePay = Math.floor(totalMinutes / 34) * 15;
+      const attendancePay = Math.floor(totalMinutes / 35) * 15;
 
       return {
         ...p,
@@ -846,7 +846,7 @@ export const AppProvider = ({ children }) => {
         id: `RES-${row.id}`,
         timestamp: row.created_at || getSafeISOTime(),
         status: 'pending',
-        deposit: resData.deposit || 50,
+        deposit: resData.deposit || 105,
         ...resData
       };
       // Optimistic update
@@ -860,7 +860,7 @@ export const AppProvider = ({ children }) => {
           id: tempId,
           timestamp: getSafeISOTime(),
           status: 'pending',
-          deposit: resData.deposit || 50,
+          deposit: resData.deposit || 105,
           ...resData
         };
         setReservations(prev => [newRes, ...prev]);
