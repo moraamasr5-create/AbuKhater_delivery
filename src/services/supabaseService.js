@@ -440,7 +440,9 @@ export const supabaseService = {
           id: shiftData.id,
           date: shiftData.date,
           start_time: shiftData.startTime,
-          status: 'open'
+          status: 'open',
+          total_orders: 0,
+          stats: {}
         }])
         .select();
       if (error) throw error;
