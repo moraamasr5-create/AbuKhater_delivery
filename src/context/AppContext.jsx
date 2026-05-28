@@ -702,8 +702,11 @@ export const AppProvider = ({ children }) => {
     const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
 
     if (newStatus === 'open' && pilot.shiftUsed) {
-      alert('⚠️ هذا الطيار قام بفتح وردية مسبقاً في هذا اليوم. لا يمكن فتحه مرة أخرى.');
-      return;
+      const password = prompt('⚠️ الطيار فتح وردية مسبقاً! للضرورة القصوى أدخل كلمة سر الأدمن (8080) لفتحه مرة أخرى:');
+      if (password !== '8080') {
+        alert('❌ كلمة السر غير صحيحة، تم إلغاء العملية.');
+        return;
+      }
     }
 
     let sessionMinutes = 0;

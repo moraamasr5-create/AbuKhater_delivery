@@ -499,12 +499,14 @@ export const supabaseService = {
   async deleteReservation(id, skipQueue = false) {
     return withOfflineSupport('deleteReservation', async () => {
       const cleanId = String(id).replace(/^RES-/, '');
-      const isUuid = /^[0-9a-f-]{36}$/i.test(cleanId);
-      if (!isUuid) { console.warn('Invalid reservation ID for deletion:', cleanId); return; }
+      const isNumericId = /^\d+$/.test(cleanId) || !isNaN(parseInt(cleanId, 10));
+      if (!isNumericId) { console.warn('Invalid reservation ID for deletion:', cleanId); return; }
+      
       const { error } = await supabase
         .from('reservations')
         .update({ status: 'deleted' })
         .eq('id', cleanId);
+        
       if (error) throw error;
     }, { id }, skipQueue);
   },
