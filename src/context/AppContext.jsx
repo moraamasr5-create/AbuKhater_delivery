@@ -354,7 +354,7 @@ export const AppProvider = ({ children }) => {
     try {
       // التحقق من وجود وردية مفتوحة في Supabase
       const existingShift = await supabaseService.getShiftByDate(logicalDate);
-      
+
       if (existingShift) {
         console.log(`[Shift] Resuming existing shift: ${existingShift.id}`);
         setCurrentShift({
@@ -386,9 +386,9 @@ export const AppProvider = ({ children }) => {
       };
 
       setCurrentShift(newShift);
-      
+
       const result = await supabaseService.createShift(newShift);
-      
+
       console.log('✅ Shift created successfully in Supabase');
       logAction('SHIFT_OPEN', `فتح وردية جديدة - ${logicalDate}`, 'Manager');
       alert('✅ تم فتح وردية جديدة بنجاح');
@@ -702,7 +702,7 @@ export const AppProvider = ({ children }) => {
     const newStatus = pilot.shiftStatus === 'open' ? 'closed' : 'open';
 
     if (newStatus === 'open' && pilot.shiftUsed) {
-      const password = prompt('⚠️ الطيار فتح وردية مسبقاً! للضرورة القصوى أدخل كلمة سر الأدمن (8080) لفتحه مرة أخرى:');
+      const password = prompt('⚠️ الطيار فتح وردية مسبقاً! للضرورة القصوى أدخل كلمة سر الأدمن لفتحه مرة أخرى:');
       if (password !== '8080') {
         alert('❌ كلمة السر غير صحيحة، تم إلغاء العملية.');
         return;
