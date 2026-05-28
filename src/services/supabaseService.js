@@ -437,23 +437,38 @@ export const supabaseService = {
   // ─────────────────────────────────────────────────────────
   async createShift(shiftData, skipQueue = false) {
     return withOfflineSupport('createShift', async () => {
-      try {
-        const { data, error } = await supabase
-          .from('shifts')
-          .insert([{
-            id: shiftData.id,
-            date: shiftData.date,
-            start_time: shiftData.startTime,
-            status: 'open'
-          }])
-          .select();
-        if (error) throw error;
-        return data;
-      } catch (e) {
-        console.warn('shifts table insert skipped (table may not exist):', e?.message);
-        return null;
-      }
+      const { data, error } = await supabase
+        .from('shifts')
+        .insert([{
+          id: shiftData.id,
+          date: shiftData.date,
+          start_time: shiftData.startTime,
+          status: 'open'
+        }])
+        .select();
+      if (error) throw error;
+      return data;
     }, shiftData, skipQueue);
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // 9.5 getShiftByDate
+  //     يبحث عن وردية مفتوحة بنفس التاريخ لاستئنافها
+  // ─────────────────────────────────────────────────────────
+  async getShiftByDate(dateString) {
+    return withOfflineSupport('getShiftByDate', async () => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('date', dateString)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    }, null);
   },
 
   // ─────────────────────────────────────────────────────────

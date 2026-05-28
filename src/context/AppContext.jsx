@@ -343,11 +343,34 @@ export const AppProvider = ({ children }) => {
   };
 
   /**
-   * فتح وردية جديدة: يُنشئ الوردية محلياً ويُرسلها لـ Supabase
+   * فتح وردية جديدة: يتحقق من وجود وردية بنفس التاريخ، يستأنفها أو يُنشئ جديدة
    * يعمل بدون إنترنت بفضل localStorage + pendingSync
    */
-  const openShift = () => {
+  const openShift = async () => {
     if (currentShift) return;
+
+    try {
+      const logicalDate = getLogicalShiftDateString();
+      // التحقق من وجود وردية مفتوحة مسبقاً بنفس التاريخ
+      const existingShift = await supabaseService.getShiftByDate(logicalDate);
+
+      if (existingShift) {
+        // استئناف الوردية السابقة
+        const resumedShift = {
+          id: existingShift.id,
+          date: existingShift.date,
+          startTime: existingShift.start_time,
+          status: 'open'
+        };
+        setCurrentShift(resumedShift);
+        logAction('SHIFT_RESUME', `Resumed existing shift for ${logicalDate}`, 'Manager');
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not fetch existing shift, proceeding to create new one:', e);
+    }
+
+    // إنشاء وردية جديدة إذا لم يتم العثور على واحدة
     const newShift = {
       id: generateSafeId('shift'),
       date: getLogicalShiftDateString(),
