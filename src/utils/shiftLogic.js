@@ -3,7 +3,16 @@
 /**
  * Utility functions for precise business logic and time normalization.
  * Fixes the 20-hour shift bug (8:00 AM to 4:00 AM) and delay latency issues.
+ * MAX_SHIFT_MINUTES: أقصي وقت شيفت طيار = 12 ساعة (720 دقيقة)
  */
+
+// أقصي مدة شيفت طيار = 12 ساعة = 720 دقيقة
+export const MAX_SHIFT_MINUTES = 12 * 60; // 720
+
+// Cap total pilot minutes to the maximum allowed shift duration
+export const capShiftMinutes = (minutes) => {
+  return Math.min(minutes, MAX_SHIFT_MINUTES);
+};
 
 // Normalize all current times to avoid client-server discrepancies
 export const getNormalizedDate = (dateString) => {
