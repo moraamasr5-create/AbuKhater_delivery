@@ -439,7 +439,7 @@ export const supabaseService = {
         .insert([{
           id: shiftData.id,
           date: shiftData.date,
-          start_time: shiftData.startTime,
+          start_time: shiftData.start_time || shiftData.startTime,
           status: 'open',
           total_orders: 0,
           stats: {}
