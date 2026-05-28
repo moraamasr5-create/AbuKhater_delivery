@@ -414,20 +414,17 @@ export const supabaseService = {
   // ─────────────────────────────────────────────────────────
   async saveShiftReport(reportData, skipQueue = false) {
     return withOfflineSupport('saveShiftReport', async () => {
-      // Try saving to shifts table (may or may not exist)
-      try {
-        await supabase
-          .from('shifts')
-          .update({
-            status: 'closed',
-            end_time: reportData.endTime,
-            total_orders: reportData.ordersCount,
-            stats: reportData
-          })
-          .eq('id', reportData.id);
-      } catch (e) {
-        console.warn('shifts table update skipped:', e?.message);
-      }
+      const { error } = await supabase
+        .from('shifts')
+        .update({
+          status: 'closed',
+          end_time: reportData.endTime,
+          total_orders: reportData.ordersCount,
+          stats: reportData
+        })
+        .eq('id', reportData.id);
+
+      if (error) throw error;
     }, reportData, skipQueue);
   },
 

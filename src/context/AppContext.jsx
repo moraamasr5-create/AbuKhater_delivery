@@ -11,7 +11,8 @@ import {
   getLogicalShiftDateString,
   calculateDelayMinutes,
   getSafeISOTime,
-  generateSafeId
+  generateSafeId,
+  generateUUID
 } from '../utils/shiftLogic';
 import { safeParseOrder } from '../utils/safeOrderParser';
 
@@ -372,7 +373,7 @@ export const AppProvider = ({ children }) => {
 
     // إنشاء وردية جديدة إذا لم يتم العثور على واحدة
     const newShift = {
-      id: generateSafeId('shift'),
+      id: generateUUID(),
       date: getLogicalShiftDateString(),
       startTime: getSafeISOTime(),
       status: 'open'
