@@ -260,6 +260,7 @@ export const supabaseService = {
       const { data, error } = await supabase
         .from('reservations')
         .select('*')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -502,7 +503,7 @@ export const supabaseService = {
       if (!isUuid) { console.warn('Invalid reservation ID for deletion:', cleanId); return; }
       const { error } = await supabase
         .from('reservations')
-        .delete()
+        .update({ status: 'deleted' })
         .eq('id', cleanId);
       if (error) throw error;
     }, { id }, skipQueue);
