@@ -348,66 +348,54 @@ export const AppProvider = ({ children }) => {
    * يعمل بدون إنترنت بفضل localStorage + pendingSync
    */
   const openShift = async () => {
-    if (currentShift) return;
+    const logicalDate = getLogicalShiftDateString();
+    console.log(`[Shift] Checking shift for date: ${logicalDate}`);
 
     try {
-      const logicalDate = getLogicalShiftDateString();
-      console.log(`[Shift System] Checking for existing open shift for date: ${logicalDate}`);
-      
-      // التحقق من وجود وردية مفتوحة مسبقاً بنفس التاريخ
+      // التحقق من وجود وردية مفتوحة في Supabase
       const existingShift = await supabaseService.getShiftByDate(logicalDate);
-
+      
       if (existingShift) {
-        console.log(`[Shift System] Found existing shift. Resuming shift ID: ${existingShift.id}`);
-        // استئناف الوردية السابقة
-        const resumedShift = {
+        console.log(`[Shift] Resuming existing shift: ${existingShift.id}`);
+        setCurrentShift({
           id: existingShift.id,
           date: existingShift.date,
           startTime: existingShift.start_time,
           status: 'open'
-        };
-        setCurrentShift(resumedShift);
-        logAction('SHIFT_RESUME', `Resumed existing shift for ${logicalDate}`, 'Manager');
-        alert('تم استئناف وردية مفتوحة سابقة بنجاح.');
+        });
+        logAction('SHIFT_RESUME', `استئناف وردية ${logicalDate}`, 'Manager');
+        alert(`✅ تم استئناف الوردية المفتوحة بتاريخ ${logicalDate}`);
         return;
       }
     } catch (e) {
-      console.warn('[Shift System] Could not fetch existing shift, proceeding to create new one:', e);
+      console.warn('[Shift] Could not check existing shift:', e.message);
     }
 
+    // إنشاء وردية جديدة
     try {
       const newId = generateUUID();
-      console.log(`[Shift System] Attempting to create new shift with ID: ${newId}`);
-      
-      // إنشاء وردية جديدة إذا لم يتم العثور على واحدة
+      console.log(`[Shift] Creating new shift with ID: ${newId}`);
+
       const newShift = {
         id: newId,
-        date: getLogicalShiftDateString(),
-        startTime: getSafeISOTime(),
-        status: 'open'
+        date: logicalDate,
+        start_time: getSafeISOTime(),   // مهم: اسم العمود start_time
+        status: 'open',
+        total_orders: 0,
+        stats: {}
       };
+
+      setCurrentShift(newShift);
       
-      setCurrentShift(newShift); // Optimistic update
-      await supabaseService.createShift(newShift);
-      console.log(`[Shift System] New shift created successfully in DB: ${newId}`);
+      const result = await supabaseService.createShift(newShift);
       
-      // Reset pilots for new shift: Available, No Orders, Last Return = Now (Start of Queue)
-      setPilots(prev => prev.map(p => ({
-        ...p,
-        shiftStatus: 'closed',
-        state: 'available',
-        lastReturnTime: getSafeISOTime(),
-        balance: 0,
-        totalMinutes: 0,
-        ordersCount: 0,
-        shiftUsed: false,
-        lastOpenedAt: null
-      })));
-      logAction('SHIFT_OPEN', 'New shift started', 'Manager');
-      alert('تم فتح وردية جديدة بنجاح.');
-    } catch (e) {
-      console.error('[Shift System] Failed to create new shift:', e);
-      alert('حدث خطأ أثناء محاولة فتح الوردية في قاعدة البيانات. يرجى التحقق من الاتصال والمحاولة مرة أخرى.');
+      console.log('✅ Shift created successfully in Supabase');
+      logAction('SHIFT_OPEN', `فتح وردية جديدة - ${logicalDate}`, 'Manager');
+      alert('✅ تم فتح وردية جديدة بنجاح');
+
+    } catch (error) {
+      console.error('❌ Failed to create shift:', error);
+      alert(`❌ خطأ في فتح الوردية: ${error.message}`);
     }
   };
 
