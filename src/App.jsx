@@ -7,6 +7,89 @@ import FeedbackView from './components/feedback/FeedbackView';
 import Login from './components/auth/Login';
 import { useApp } from './context/AppContext';
 import { Package, Bike, Clock, Plus, MapPin, AlertTriangle, Receipt, Globe, Monitor, ChevronLeft, ChevronRight, UtensilsCrossed, PlusCircle, Menu, Ruler, ShieldAlert, KeyRound, Trash2 } from 'lucide-react';
+import { supabase } from './services/supabase/supabaseClient';
+
+export const processImageUpload = async (file) => {
+  if (file.size > 5 * 1024 * 1024) {
+    alert("حجم الصورة كبير جداً (أقصى حجم 5MB).");
+    return null;
+  }
+
+  const originalSize = (file.size / 1024).toFixed(2);
+  console.log(`[Image] Original Size: ${originalSize} KB`);
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1200;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.6;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        let getKbSize = (base64String) => (base64String.length * 0.75) / 1024;
+
+        while (getKbSize(dataUrl) > 300 && quality > 0.1) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        const compressedSize = getKbSize(dataUrl).toFixed(2);
+        console.log(`[Image] Compressed Size: ${compressedSize} KB`);
+        console.log(`[Image] Compression Ratio: ${((1 - (compressedSize / originalSize)) * 100).toFixed(2)}% reduction`);
+
+        if (navigator.onLine && supabase) {
+          try {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const fileName = `receipts/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+            
+            const { data, error } = await supabase.storage
+              .from('payments')
+              .upload(fileName, blob, { contentType: 'image/jpeg' });
+
+            if (!error && data) {
+              const { data: publicUrlData } = supabase.storage
+                .from('payments')
+                .getPublicUrl(fileName);
+              
+              if (publicUrlData && publicUrlData.publicUrl) {
+                console.log("[Image] Uploaded to Supabase Storage");
+                return resolve(publicUrlData.publicUrl);
+              }
+            } else {
+               console.warn("[Image] Supabase upload failed, falling back to Base64", error);
+            }
+          } catch (err) {
+            console.error("[Image] Error uploading to Supabase:", err);
+          }
+        }
+        
+        resolve(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 const RESTAURANT_COORDS = { lat: 30.126131, lng: 31.298350 };
 
@@ -648,6 +731,7 @@ const SIMPLE_MENU = {
 
 const ManualOrderForm = ({ onClose, initialData }) => {
   const { addOrder, sendToN8N } = useApp();
+  const [isCompressing, setIsCompressing] = useState(false);
   const [formData, setFormData] = useState(initialData?.formData || {
     receiptNo: '', customerName: '', phone: '', area: '',
     lat: null, lng: null, zone: null, distance: 0,
@@ -961,14 +1045,18 @@ const ManualOrderForm = ({ onClose, initialData }) => {
                 required
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setFormData({ ...formData, paymentProof: reader.result });
-                    reader.readAsDataURL(file);
+                    setIsCompressing(true);
+                    const processed = await processImageUpload(file);
+                    if (processed) {
+                      setFormData({ ...formData, paymentProof: processed });
+                    }
+                    setIsCompressing(false);
                   }
                 }}
+                disabled={isCompressing}
                 style={{ fontSize: '0.8rem', color: 'white', cursor: 'pointer' }}
               />
               {formData.paymentProof && (
@@ -985,6 +1073,7 @@ const ManualOrderForm = ({ onClose, initialData }) => {
             <button
               onClick={handleSubmit}
               disabled={
+                isCompressing ||
                 isOutsideRadius ||
                 !formData.receiptNo ||
                 !formData.area ||
@@ -993,11 +1082,11 @@ const ManualOrderForm = ({ onClose, initialData }) => {
               className="btn-primary"
               style={{
                 flex: 2, justifyContent: 'center', height: '50px', fontSize: '1.1rem',
-                opacity: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
-                cursor: (isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
+                opacity: (isCompressing || isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 0.5 : 1,
+                cursor: (isCompressing || isOutsideRadius || !formData.receiptNo || !formData.area || ((formData.paymentMethod === 'vodafone_cash' || formData.paymentMethod === 'instapay') && !formData.paymentProof)) ? 'not-allowed' : 'pointer'
               }}
             >
-              حفظ الأوردر
+              {isCompressing ? "جاري المعالجة..." : "حفظ الأوردر"}
             </button>
             <button onClick={onClose} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'white' }}>إلغاء</button>
           </div>
@@ -1178,15 +1267,19 @@ const ReservationModal = ({ onClose }) => {
 
 const ConfirmPaymentModal = ({ res, onClose }) => {
   const { confirmReservation } = useApp();
+  const [isCompressing, setIsCompressing] = useState(false);
   const [refNum, setRefNum] = useState('');
   const [proof, setProof] = useState(null);
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setProof(reader.result);
-      reader.readAsDataURL(file);
+      setIsCompressing(true);
+      const processed = await processImageUpload(file);
+      if (processed) {
+        setProof(processed);
+      }
+      setIsCompressing(false);
     }
   };
 
@@ -1213,8 +1306,8 @@ const ConfirmPaymentModal = ({ res, onClose }) => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="submit" className="btn-primary" style={{ flex: 2, background: 'var(--success)', justifyContent: 'center' }}>تأكيد نهائي</button>
-            <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', borderRadius: '8px' }}>رجوع</button>
+            <button type="submit" disabled={isCompressing} className="btn-primary" style={{ flex: 2, background: 'var(--success)', justifyContent: 'center', opacity: isCompressing ? 0.5 : 1 }}>{isCompressing ? "جاري المعالجة..." : "تأكيد نهائي"}</button>
+            <button type="button" onClick={onClose} disabled={isCompressing} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'white', cursor: 'pointer', borderRadius: '8px', opacity: isCompressing ? 0.5 : 1 }}>رجوع</button>
           </div>
         </form>
       </div>
