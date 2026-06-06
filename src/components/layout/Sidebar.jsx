@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Home, Inbox, Users, BarChart3, Settings, Play, Square, PlusCircle, UtensilsCrossed, KeyRound, LogOut, MessageSquare, Wifi, WifiOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isAutoCloseTime } from '../../utils/shiftLogic';
+import { safeGetItem } from '../../utils/safeStorage';
 
 
 const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenSecurity }) => {
@@ -125,7 +126,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                         {!isShiftOpen ? (
                             <button
                                 onClick={() => {
-                                    const correctPwd = localStorage.getItem(`b_delivery_password_${userRole}`) || '8080';
+                                    const correctPwd = safeGetItem(`b_delivery_password_${userRole}`) || '8080';
                                     const pwd = prompt('أدخل كلمة المرور لفتح الوردية:');
                                     if (pwd === correctPwd) {
                                         openShift();
@@ -146,7 +147,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
                                         closeShift(true);
                                         closeSidebar();
                                     } else {
-                                        const correctPwd = localStorage.getItem(`b_delivery_password_${userRole}`) || '8080';
+                                        const correctPwd = safeGetItem(`b_delivery_password_${userRole}`) || '8080';
                                         const pwd = prompt('أدخل كلمة المرور لإغلاق الوردية:');
                                         if (pwd === correctPwd) {
                                             closeShift(false);

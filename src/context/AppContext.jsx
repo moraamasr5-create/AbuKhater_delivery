@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useMemo 
 import { API_CONFIG } from '../config/apiConfig';
 import { supabaseService, processPendingSync } from '../services/supabaseService';
 import { printerService } from '../services/printerService';
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 
 const AppContext = createContext();
 
@@ -55,11 +56,11 @@ export const AppProvider = ({ children }) => {
   });
 
   const [isThermalPrintMode, setIsThermalPrintMode] = useState(() => {
-    return localStorage.getItem('is_thermal_print_mode') === 'true';
+    return safeGetItem('is_thermal_print_mode') === 'true';
   });
 
   useEffect(() => {
-    localStorage.setItem('is_thermal_print_mode', isThermalPrintMode);
+    safeSetItem('is_thermal_print_mode', isThermalPrintMode);
     if (isThermalPrintMode) {
       document.body.classList.add('thermal-print-active');
     } else {
@@ -78,83 +79,34 @@ export const AppProvider = ({ children }) => {
 
   // تهيئة كلمات المرور الافتراضية إذا لم تكن موجودة
   useEffect(() => {
-    if (!localStorage.getItem('b_delivery_password_admin')) {
-      localStorage.setItem('b_delivery_password_admin', '8080');
+    if (!safeGetItem('b_delivery_password_admin')) {
+      safeSetItem('b_delivery_password_admin', '8080');
     }
-    if (!localStorage.getItem('b_delivery_password_casher')) {
-      localStorage.setItem('b_delivery_password_casher', '8080');
+    if (!safeGetItem('b_delivery_password_casher')) {
+      safeSetItem('b_delivery_password_casher', '8080');
     }
   }, []);
 
-  const [orders, setOrders] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_orders');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [orders, setOrders] = useState([]);
 
   // الحجوزات: تُحمّل من localStorage أولاً ثم يُحدّث من Supabase في الخلفية
-  const [reservations, setReservations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_reservations');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [pilots, setPilots] = useState(() => {
-    try {
-      const saved = localStorage.getItem("delivery_pilots");
-      if (saved && saved !== "undefined") {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { }
-    return [];
-  });
+  const [reservations, setReservations] = useState([]);
+  const [pilots, setPilots] = useState([]);
 
   const [currentShift, setCurrentShift] = useState(() => {
     try {
-      const saved = localStorage.getItem('delivery_current_shift');
+      const saved = safeGetItem('delivery_current_shift');
       return (saved && saved !== 'undefined') ? JSON.parse(saved) : null;
     } catch { return null; }
   });
 
-  const [dailyReports, setDailyReports] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_reports');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [dailyReports, setDailyReports] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem('delivery_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('delivery_pilots', JSON.stringify(pilots));
-  }, [pilots]);
-
-  useEffect(() => {
-    localStorage.setItem('delivery_current_shift', JSON.stringify(currentShift));
+    safeSetItem('delivery_current_shift', JSON.stringify(currentShift));
   }, [currentShift]);
 
-  useEffect(() => {
-    localStorage.setItem('delivery_reports', JSON.stringify(dailyReports));
-  }, [dailyReports]);
-
-  const [auditLogs, setAuditLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('delivery_audit_logs');
-      return (saved && saved !== 'undefined') ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('delivery_audit_logs', JSON.stringify(auditLogs));
-  }, [auditLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('delivery_reservations', JSON.stringify(reservations));
-  }, [reservations]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   // عند تحميل التطبيق: أعد محاولة العمليات المعلّقة (pendingSync) في حال وجود اتصال
   useEffect(() => {

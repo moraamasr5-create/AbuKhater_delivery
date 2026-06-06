@@ -1,5 +1,6 @@
 // Developed & Owned by D.AmrMamdouh - 01038035884
 import { supabase } from './supabase/supabaseClient';
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 
 // ============================================================
 // OFFLINE SYNC QUEUE
@@ -11,7 +12,7 @@ const QUEUE_KEY = 'delivery_pending_sync';
  * يقرأ قائمة العمليات المنتظرة من localStorage
  */
 const getPendingQueue = () => {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }
+  try { return JSON.parse(safeGetItem(QUEUE_KEY)) || []; }
   catch { return []; }
 };
 
@@ -19,7 +20,7 @@ const getPendingQueue = () => {
  * يحفظ قائمة العمليات المنتظرة في localStorage
  */
 const savePendingQueue = (queue) => {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  safeSetItem(QUEUE_KEY, JSON.stringify(queue));
 };
 
 /**
