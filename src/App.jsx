@@ -75,15 +75,20 @@ export const processImageUpload = async (file) => {
                 console.log("[Image] Uploaded to Supabase Storage");
                 return resolve(publicUrlData.publicUrl);
               }
-            } else {
-               console.warn("[Image] Supabase upload failed, falling back to Base64", error);
             }
+            
+            console.error("[Image] Supabase upload failed", error);
+            alert("حدث خطأ أثناء رفع الصورة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.");
+            return resolve(null);
           } catch (err) {
             console.error("[Image] Error uploading to Supabase:", err);
+            alert("حدث خطأ أثناء رفع الصورة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.");
+            return resolve(null);
           }
+        } else {
+          alert("لا يوجد اتصال بالإنترنت لرفع الصورة. يرجى التحقق من اتصالك.");
+          return resolve(null);
         }
-        
-        resolve(dataUrl);
       };
       img.src = event.target.result;
     };

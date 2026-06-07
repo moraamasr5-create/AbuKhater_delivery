@@ -13,7 +13,8 @@ import {
   calculateDelayMinutes,
   getSafeISOTime,
   generateSafeId,
-  generateUUID
+  generateUUID,
+  capShiftMinutes
 } from '../utils/shiftLogic';
 import { safeParseOrder } from '../utils/safeOrderParser';
 
@@ -110,6 +111,7 @@ export const AppProvider = ({ children }) => {
 
   // عند تحميل التطبيق: أعد محاولة العمليات المعلّقة (pendingSync) في حال وجود اتصال
   useEffect(() => {
+    localStorage.removeItem('order_sequence_num'); // Remove legacy sequential ID
     processPendingSync();
   }, []);
 
@@ -154,7 +156,7 @@ export const AppProvider = ({ children }) => {
     const fetchInitialData = async () => {
       try {
         const [fetchedOrders, fetchedPilots, fetchedRes] = await Promise.all([
-          supabaseService.fetchOrders(),
+          supabaseService.fetchOrders(currentShift?.id),
           supabaseService.fetchDeliveryDrivers(),
           supabaseService.fetchReservations()
         ]);
@@ -253,7 +255,7 @@ export const AppProvider = ({ children }) => {
   const syncExternalOrders = async () => {
     if (currentShift?.status !== 'open') return;
     try {
-      const fetchedOrders = await supabaseService.fetchOrders();
+      const fetchedOrders = await supabaseService.fetchOrders(currentShift?.id);
       setOrders(prev => {
         const onlyNew = fetchedOrders.filter(fo => !prev.some(p => (p.originalId || p.id) === fo.originalId));
         return [...onlyNew, ...prev];
@@ -394,9 +396,15 @@ export const AppProvider = ({ children }) => {
     logAction('SHIFT_CLOSE', `Shift closed. Orders: ${stats.totalOrders}. File Generated.`, 'Manager');
     sendToN8N(snapshot, 'SHIFT_CLOSE');
 
+    // Bulk reset all pilots in the Supabase delivery table
+    const allPilotIds = pilots.map(p => p.id);
+    if (allPilotIds.length > 0) {
+      supabaseService.resetAllPilots(allPilotIds);
+    }
+
     setOrders([]);
     setCurrentShift(null);
-    setPilots(prev => prev.map(p => ({ ...p, shiftStatus: 'closed', state: 'available', balance: 0, totalMinutes: 0, shiftUsed: false, lastOpenedAt: null })));
+    setPilots(prev => prev.map(p => ({ ...p, shiftStatus: 'closed', state: 'available', balance: 0, totalMinutes: 0, ordersCount: 0, shiftUsed: false, lastOpenedAt: null })));
     return true;
   };
 
@@ -423,8 +431,8 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    // Generate unique ID if duplicate
-    const finalId = existingCount > 0 ? `${orderData.id}_2` : orderData.id;
+    // Generate unique ID using server-generated UUID
+    const finalId = generateUUID();
 
     const newOrder = {
       ...orderData,
@@ -593,7 +601,17 @@ export const AppProvider = ({ children }) => {
       const returnUpdates = nextState === 'available'
         ? { state: 'available', last_return_time: nowTime }
         : { state: 'out' };
-      supabaseService.updatePilotState(order.pilotId, returnUpdates);
+
+      const targetPilot = pilots.find(p => String(p.id) === String(pilotIdToUse));
+      if (targetPilot) {
+        const currentActiveSession = (targetPilot.shiftStatus === 'open' && targetPilot.lastOpenedAt)
+          ? calculateDelayMinutes(targetPilot.lastOpenedAt)
+          : 0;
+        returnUpdates.total_minutes = (targetPilot.totalMinutes || 0) + currentActiveSession;
+        returnUpdates.orders_count = orders.filter(o => String(o.pilotId) === String(pilotIdToUse) && o.status === 'completed' && o.id !== orderId).length + 1;
+      }
+
+      supabaseService.updatePilotState(order.pilotId || pilotIdToUse, returnUpdates);
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
     sendToN8N({ ...order, status: 'completed', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
@@ -634,7 +652,17 @@ export const AppProvider = ({ children }) => {
       const returnUpdates = nextState === 'available'
         ? { state: 'available', last_return_time: nowTime }
         : { state: 'out' };
-      supabaseService.updatePilotState(order.pilotId, returnUpdates);
+
+      const targetPilot = pilots.find(p => String(p.id) === String(pilotIdToUse));
+      if (targetPilot) {
+        const currentActiveSession = (targetPilot.shiftStatus === 'open' && targetPilot.lastOpenedAt)
+          ? calculateDelayMinutes(targetPilot.lastOpenedAt)
+          : 0;
+        returnUpdates.total_minutes = (targetPilot.totalMinutes || 0) + currentActiveSession;
+        returnUpdates.orders_count = orders.filter(o => String(o.pilotId) === String(pilotIdToUse) && o.status === 'completed' && o.id !== orderId).length;
+      }
+
+      supabaseService.updatePilotState(order.pilotId || pilotIdToUse, returnUpdates);
     }
     logAction('DELIVERY_FAIL', `Order #${orderId} failed delivery. Reason: ${reason}`, 'Supervisor');
     sendToN8N({ ...order, status: 'failed_delivery', failureReason: reason, endTime: nowTime, failedAt: nowTime }, 'ORDER_FAIL');
@@ -770,7 +798,7 @@ export const AppProvider = ({ children }) => {
         }
       });
 
-      const attendancePay = Math.floor(totalMinutes / 35) * 15;
+      const attendancePay = Math.floor(capShiftMinutes(totalMinutes) / 35) * 15;
 
       return {
         ...p,

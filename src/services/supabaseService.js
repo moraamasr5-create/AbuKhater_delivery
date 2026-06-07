@@ -62,6 +62,8 @@ export const processPendingSync = async () => {
         await supabaseService.updateReservationStatus(item.payload.id, item.payload.newStatus, item.payload.refNum, item.payload.paymentProof, true);
       } else if (item.action === 'deleteReservation') {
         await supabaseService.deleteReservation(item.payload.id, true);
+      } else if (item.action === 'resetAllPilots') {
+        await supabaseService.resetAllPilots(item.payload.pilotIds, true);
       }
     } catch (e) {
       console.warn('⚠️ Offline sync item failed, keeping in queue:', item);
@@ -137,13 +139,20 @@ export const supabaseService = {
   // 1. fetchOrders
   //    يجلب الطلبات من جدول orders ويحوّلها لشكل الـ UI
   // ─────────────────────────────────────────────────────────
-  async fetchOrders() {
+  async fetchOrders(shiftId = null) {
     return withOfflineSupport('fetchOrders', async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('*, order_items(*), delivery:delivery_id(id, name, phone, state)')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
+
+      if (shiftId) {
+        query = query.eq('shift_id', shiftId);
+      } else {
+        query = query.limit(50);
+      }
+
+      const { data, error } = await query;
 
       if (error) { console.error('❌ fetchOrders:', error); return []; }
       if (!data) return [];
@@ -431,6 +440,27 @@ export const supabaseService = {
   },
 
   // ─────────────────────────────────────────────────────────
+  // 8.5 resetAllPilots
+  // ─────────────────────────────────────────────────────────
+  async resetAllPilots(pilotIds, skipQueue = false) {
+    if (!pilotIds || !pilotIds.length) return;
+    return withOfflineSupport('resetAllPilots', async () => {
+      const { error } = await supabase
+        .from('delivery')
+        .update({
+          state: 'available',
+          shift_started_at: null,
+          shift_ended_at: null,
+          total_minutes: 0,
+          orders_count: 0,
+          shift_used: false
+        })
+        .in('id', pilotIds);
+      if (error) throw error;
+    }, { pilotIds }, skipQueue);
+  },
+
+  // ─────────────────────────────────────────────────────────
   // 9. createShift
   //    يفتح وردية جديدة في DB (مع تجاهل أخطاء الجدول)
   // ─────────────────────────────────────────────────────────
@@ -578,8 +608,9 @@ export const supabaseService = {
   // ─────────────────────────────────────────────────────────
 
   subscribeToOrders(callback) {
+    const channelId = `orders-realtime-${Date.now()}`;
     return supabase
-      .channel('orders-realtime')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
         console.log('🔄 Realtime Order:', payload);
         callback(payload);
@@ -588,8 +619,9 @@ export const supabaseService = {
   },
 
   subscribeToReservations(callback) {
+    const channelId = `reservations-realtime-${Date.now()}`;
     return supabase
-      .channel('reservations-realtime')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
         console.log('🔄 Realtime Reservation:', payload);
         callback(payload);
@@ -598,8 +630,9 @@ export const supabaseService = {
   },
 
   subscribeToDrivers(callback) {
+    const channelId = `delivery-realtime-${Date.now()}`;
     return supabase
-      .channel('delivery-realtime')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery' }, payload => {
         console.log('🔄 Realtime Driver:', payload);
         callback(payload);
