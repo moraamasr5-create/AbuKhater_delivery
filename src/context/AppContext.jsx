@@ -241,7 +241,7 @@ export const AppProvider = ({ children }) => {
     setPilots(prev => {
       let changed = false;
       const updated = prev.map(p => {
-        const finishedCount = orders.filter(o => String(o.pilotId) === String(p.id) && o.status === 'completed').length;
+        const finishedCount = orders.filter(o => String(o.pilotId) === String(p.id) && (o.status === 'completed' || o.status === 'delivered')).length;
         if (p.ordersCount !== finishedCount) {
           changed = true;
           return { ...p, ordersCount: finishedCount };
@@ -434,6 +434,20 @@ export const AppProvider = ({ children }) => {
     // Generate unique ID using server-generated UUID
     const finalId = generateUUID();
 
+    const items = orderData.items || [];
+    const itemsTotal = items.reduce((sum, item) => {
+      const price = Number(item.price || item.unit_price || 0);
+      const count = Number(item.count || item.quantity || 1);
+      return sum + (price * count);
+    }, 0);
+    const serviceFee = Number(orderData.serviceFee || orderData.service_fee || 0);
+    const deliveryFee = Number(orderData.deliveryFee || orderData.delivery_fee || 0);
+    const totalAmount = itemsTotal + deliveryFee + serviceFee;
+
+    const isCashOnDelivery = (!orderData.paymentMethod || orderData.paymentMethod === 'Cash' || String(orderData.paymentMethod).toLowerCase().includes('cash'));
+    const paidNow = isCashOnDelivery ? 0 : Number(orderData.paidNow || orderData.paid_now || 0);
+    const remainingAmount = isCashOnDelivery ? totalAmount : (totalAmount - paidNow);
+
     const newOrder = {
       ...orderData,
       id: finalId,
@@ -442,7 +456,12 @@ export const AppProvider = ({ children }) => {
       status: 'pending_timer', // Initial status
       timestamp: getSafeISOTime(),
       shiftId: currentShift.id, // Link to Shift
-      logs: [{ time: getSafeISOTime(), action: 'CREATED', user: 'System' }] // Internal Order Log
+      logs: [{ time: getSafeISOTime(), action: 'CREATED', user: 'System' }], // Internal Order Log
+      total: totalAmount,
+      deliveryFee,
+      serviceFee,
+      paidNow,
+      remainingAmount
     };
     setOrders(prev => [newOrder, ...prev]);
     logAction('ORDER_CREATE', `Order #${orderData.id} created`, 'Operator');
@@ -465,7 +484,34 @@ export const AppProvider = ({ children }) => {
         return prev;
       }
 
-      return prev.map(o => o.id === oldId ? { ...o, ...updatedData } : o);
+      return prev.map(o => {
+        if (o.id === oldId) {
+          const merged = { ...o, ...updatedData };
+          const items = merged.items || [];
+          const itemsTotal = items.reduce((sum, item) => {
+            const price = Number(item.price || item.unit_price || 0);
+            const count = Number(item.count || item.quantity || 1);
+            return sum + (price * count);
+          }, 0);
+          const serviceFee = Number(merged.serviceFee || merged.service_fee || 0);
+          const deliveryFee = Number(merged.deliveryFee || merged.delivery_fee || 0);
+          const totalAmount = itemsTotal + deliveryFee + serviceFee;
+
+          const isCashOnDelivery = (!merged.paymentMethod || merged.paymentMethod === 'Cash' || String(merged.paymentMethod).toLowerCase().includes('cash'));
+          const paidNow = isCashOnDelivery ? 0 : Number(merged.paidNow || merged.paid_now || 0);
+          const remainingAmount = isCashOnDelivery ? totalAmount : (totalAmount - paidNow);
+
+          return {
+            ...merged,
+            total: totalAmount,
+            deliveryFee,
+            serviceFee,
+            paidNow,
+            remainingAmount
+          };
+        }
+        return o;
+      });
     });
     logAction('ORDER_UPDATE', `Order #${oldId} updated (New ID: ${updatedData.id})`, 'Supervisor');
   };
@@ -517,7 +563,21 @@ export const AppProvider = ({ children }) => {
   // Step 2: Assign Driver (Locks Order, Ready to Print)
   const assignPilot = (orderId, pilotId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || ['driver_assigned', 'active', 'completed', 'cancelled', 'failed_delivery'].includes(order.status)) return;
+    if (!order || ['driver_assigned', 'active', 'completed', 'delivered', 'cancelled', 'failed_delivery'].includes(order.status)) return;
+
+    const pilot = pilots.find(p => String(p.id) === String(pilotId));
+    if (!pilot) {
+      console.error(`Pilot ${pilotId} not found.`);
+      alert(`⚠️ خطأ: لم يتم العثور على الطيار!`);
+      return;
+    }
+
+    if (pilot.state !== 'available') {
+      const errorMsg = `Cannot assign order to pilot ${pilot.name} because their state is '${pilot.state}'.`;
+      console.error(errorMsg);
+      alert(`⚠️ خطأ: الطيار ${pilot.name} غير متاح حالياً (حالة الطيار: ${pilot.state})!`);
+      return;
+    }
 
     const safeDeliveryId = !isNaN(Number(pilotId)) ? Number(pilotId) : null;
 
@@ -526,7 +586,7 @@ export const AppProvider = ({ children }) => {
         ? { ...o, status: 'driver_assigned', pilotId, deliveryId: safeDeliveryId, assignedAt: getSafeISOTime() }
         : o
     ));
-    const pilotName = pilots.find(p => String(p.id) === String(pilotId))?.name || 'Unknown';
+    const pilotName = pilot.name || 'Unknown';
     logAction('ORDER_ASSIGN', `Order #${orderId} assigned to ${pilotName}`, 'Supervisor');
     if (order.supabaseId) {
       updateExternalOrderStatus(order.supabaseId, 'driver_assigned', null, {
@@ -535,12 +595,20 @@ export const AppProvider = ({ children }) => {
         delivery_id: safeDeliveryId
       });
     }
+
+    // Set pilot's state to 'busy' or 'on_delivery' (using 'busy')
+    setPilots(prev => prev.map(p =>
+      String(p.id) === String(pilotId)
+        ? { ...p, state: 'busy' }
+        : p
+    ));
+    supabaseService.updatePilotState(pilotId, { state: 'busy' });
   };
 
   // Step 3: Start Delivery (Pilot Leaves -> Status Out)
   const startDelivery = (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || !(order.deliveryId || order.pilotId) || order.status === 'active' || order.status === 'completed') return;
+    if (!order || !(order.deliveryId || order.pilotId) || order.status === 'active' || order.status === 'completed' || order.status === 'delivered') return;
 
     setOrders(prev => prev.map(o =>
       o.id === orderId
@@ -551,12 +619,12 @@ export const AppProvider = ({ children }) => {
     // Mark Pilot as OUT
     setPilots(prev => prev.map(p =>
       String(p.id) === String(order.deliveryId || order.pilotId)
-        ? { ...p, state: 'out' }
+        ? { ...p, state: 'on_delivery' }
         : p
     ));
 
     if (order.supabaseId) {
-      supabaseService.updatePilotState(order.deliveryId || order.pilotId, { state: 'out' });
+      supabaseService.updatePilotState(order.deliveryId || order.pilotId, { state: 'on_delivery' });
     }
 
     logAction('DELIVERY_START', `Order #${orderId} out for delivery`, 'System');
@@ -571,52 +639,43 @@ export const AppProvider = ({ children }) => {
    */
   const completeOrder = (orderId) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || order.status === 'completed') return;
+    if (!order || order.status === 'completed' || order.status === 'delivered') return;
 
     const nowTime = getSafeISOTime();
     setOrders(prev => prev.map(o =>
       o.id === orderId
-        ? { ...o, status: 'completed', endTime: nowTime, deliveredAt: nowTime }
+        ? { ...o, status: 'delivered', endTime: nowTime, deliveredAt: nowTime }
         : o
     ));
 
-    // Return Pilot to Queue (Last Return Time = Now) only if they have no other active orders left
+    // Return Pilot to Queue (Last Return Time = Now)
     const pilotIdToUse = order.deliveryId || order.pilotId;
     if (pilotIdToUse) {
-      const otherActive = orders.some(o => String(o.deliveryId || o.pilotId) === String(pilotIdToUse) && o.status === 'active' && o.id !== orderId);
-      const nextState = otherActive ? 'out' : 'available';
-
       setPilots(prev => prev.map(p => {
         if (String(p.id) === String(pilotIdToUse)) {
-          const returnTimeUpdates = nextState === 'available' ? { lastReturnTime: nowTime } : {};
           return {
             ...p,
-            state: nextState,
-            ...returnTimeUpdates
+            state: 'available',
+            lastReturnTime: nowTime,
+            ordersCount: (p.ordersCount || 0) + 1
           };
         }
         return p;
       }));
 
-      const returnUpdates = nextState === 'available'
-        ? { state: 'available', last_return_time: nowTime }
-        : { state: 'out' };
-
       const targetPilot = pilots.find(p => String(p.id) === String(pilotIdToUse));
-      if (targetPilot) {
-        const currentActiveSession = (targetPilot.shiftStatus === 'open' && targetPilot.lastOpenedAt)
-          ? calculateDelayMinutes(targetPilot.lastOpenedAt)
-          : 0;
-        returnUpdates.total_minutes = (targetPilot.totalMinutes || 0) + currentActiveSession;
-        returnUpdates.orders_count = orders.filter(o => String(o.pilotId) === String(pilotIdToUse) && o.status === 'completed' && o.id !== orderId).length + 1;
-      }
+      const returnUpdates = {
+        state: 'available',
+        last_return_time: nowTime,
+        orders_count: (targetPilot ? (targetPilot.ordersCount || 0) : 0) + 1
+      };
 
-      supabaseService.updatePilotState(order.pilotId || pilotIdToUse, returnUpdates);
+      supabaseService.updatePilotState(pilotIdToUse, returnUpdates);
     }
     logAction('ORDER_COMPLETE', `Order #${orderId} completed`, 'Supervisor');
-    sendToN8N({ ...order, status: 'completed', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
+    sendToN8N({ ...order, status: 'delivered', endTime: nowTime, deliveredAt: nowTime }, 'ORDER_COMPLETE');
     if (order.supabaseId) {
-      updateExternalOrderStatus(order.supabaseId, 'completed');
+      updateExternalOrderStatus(order.supabaseId, 'delivered');
     }
   };
 
@@ -742,7 +801,7 @@ export const AppProvider = ({ children }) => {
    * يُستدعى في كل render للـ Dashboard
    */
   const activeStats = () => {
-    const finishedOrders = orders.filter(o => o.status === 'completed');
+    const finishedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered');
     const failedOrders = orders.filter(o => o.status === 'failed_delivery');
 
     const pilotPerformance = pilots.map(p => {
@@ -770,7 +829,7 @@ export const AppProvider = ({ children }) => {
       [...pOrders, ...pFailed].forEach(o => {
         const fee = Number(o.deliveryFee) || 0;
         const source = o.source || (o.type === 'trip' ? 'external' : o.type === 'talabat' || o.type === 'external' ? 'talabat' : 'manual');
-        const isCompleted = o.status === 'completed';
+        const isCompleted = o.status === 'completed' || o.status === 'delivered';
 
         if (source === 'external') {
           if (isCompleted) {

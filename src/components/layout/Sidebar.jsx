@@ -28,7 +28,7 @@ const Sidebar = ({ activeTab, setActiveTab, isSidebarOpen, closeSidebar, onOpenS
     const allMenuItems = [
         { id: 'dashboard', label: 'الرئيسية', icon: Home, roles: ['admin', 'casher'] },
         {
-            id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['casher', 'driver']
+            id: 'inbox', label: 'صندوق الوارد', icon: Inbox, roles: ['admin', 'casher', 'driver']
         },
         { id: 'pilots', label: 'الطيارين', icon: Users, roles: ['admin', 'casher'] },
 { id: 'reservations', label: 'حجز مطعم / كافيه', icon: UtensilsCrossed, roles: ['casher'], special: true },

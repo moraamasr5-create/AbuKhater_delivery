@@ -167,14 +167,16 @@ export const supabaseService = {
               count: Number(i.quantity || 1),
               price: Number(i.unit_price || 0),
               category: 'عام',
-              total: Number(i.total_price || 0)
+              total: Number(i.total_price || 0),
+              menuItemId: i.item_id || i.menu_item_id || null
             }))
           : (rawPayload.items || []).map(item => ({
               name: item.name || item.item_name || 'صنف غير معروف',
               count: Number(item.quantity || item.count || 1),
               price: Number(item.price || item.unit_price || 0),
               category: item.category || 'عام',
-              total: Number(item.total || (Number(item.price || 0) * Number(item.quantity || 1)))
+              total: Number(item.total || (Number(item.price || 0) * Number(item.quantity || 1))),
+              menuItemId: item.menuItemId || item.menu_item_id || null
             }));
 
         const itemsDescription = rawItems.length > 0
@@ -188,13 +190,23 @@ export const supabaseService = {
         else if (rawStatus === 'confirmed' || rawStatus === 'في التحضير') mappedStatus = 'waiting_driver';
         else if (rawStatus === 'تم الإسناد للطيار') mappedStatus = 'driver_assigned';
         else if (rawStatus === 'في الطريق للتسليم') mappedStatus = 'active';
-        else if (rawStatus === 'تم التوصيل') mappedStatus = 'completed';
-        else if (['pending', 'waiting_driver', 'driver_assigned', 'completed', 'cancelled', 'failed_delivery'].includes(rawStatus)) {
-          mappedStatus = rawStatus;
+        else if (rawStatus === 'تم التوصيل' || rawStatus === 'delivered') mappedStatus = 'completed';
+        else if (['pending', 'waiting_driver', 'driver_assigned', 'completed', 'delivered', 'cancelled', 'failed_delivery'].includes(rawStatus)) {
+          mappedStatus = rawStatus === 'delivered' ? 'completed' : rawStatus;
         }
 
         // original_id: DB column first, then raw_payload fallback
         const orderId = row.original_id || rawPayload.order_id || `#${row.id.slice(0, 6)}`;
+
+        // Strict Pricing Logic
+        const itemsTotal = rawItems.reduce((sum, item) => sum + (item.price * item.count), 0);
+        const deliveryFee = Number(row.delivery_fee || rawPayload.totals?.delivery_fee || 0);
+        const serviceFee = Number(row.service_fee || rawPayload.totals?.service_fee || 0);
+        const computedTotal = itemsTotal + deliveryFee + serviceFee;
+
+        const isCashOnDelivery = (!row.payment_method || row.payment_method === 'Cash' || String(row.payment_method).toLowerCase().includes('cash'));
+        const paidNow = isCashOnDelivery ? 0 : Number(row.paid_now || rawPayload.totals?.paid_now || 0);
+        const remainingAmount = isCashOnDelivery ? computedTotal : (computedTotal - paidNow);
 
         return {
           supabaseId: row.id,
@@ -206,12 +218,12 @@ export const supabaseService = {
           phone: row.customer_phone || rawPayload.customer?.phone_1 || 'غير مسجل',
           phone2: row.customer_phone_2 || rawPayload.customer?.phone_2 || '',
           area: row.delivery_address || rawPayload.customer?.delivery_info?.address || 'استلام من المطعم',
-          total: Number(row.total_amount || rawPayload.totals?.total || 0),
-          deliveryFee: Number(row.delivery_fee || rawPayload.totals?.delivery_fee || 0),
-          subtotal: Number(rawPayload.totals?.subtotal || 0),
-          serviceFee: Number(row.service_fee || rawPayload.totals?.service_fee || 0),
-          paidNow: Number(row.paid_now || rawPayload.totals?.paid_now || 0),
-          remainingAmount: Number(row.remaining_amount || rawPayload.totals?.remaining_amount || 0),
+          total: computedTotal,
+          deliveryFee,
+          subtotal: itemsTotal,
+          serviceFee,
+          paidNow,
+          remainingAmount,
           items: rawItems,
           itemsDescription,
           paymentMethod: row.payment_method || rawPayload.customer?.payment_method || 'Cash',
@@ -244,7 +256,7 @@ export const supabaseService = {
       else if (newStatus === 'cancelled') dbStatus = reason ? `ملغي (${reason})` : 'ملغي';
       else if (newStatus === 'driver_assigned') dbStatus = 'تم الإسناد للطيار';
       else if (newStatus === 'out_for_delivery' || newStatus === 'active') dbStatus = 'في الطريق للتسليم';
-      else if (newStatus === 'completed') dbStatus = 'تم التوصيل';
+      else if (newStatus === 'completed' || newStatus === 'delivered') dbStatus = 'تم التوصيل';
       else if (newStatus === 'failed_delivery') dbStatus = reason ? `فشل التوصيل (${reason})` : 'فشل التوصيل';
 
       const updatePayload = { status: dbStatus };

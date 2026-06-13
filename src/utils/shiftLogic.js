@@ -34,7 +34,10 @@ export const getLogicalShiftDateString = () => {
     shiftDate.setDate(shiftDate.getDate() - 1);
   }
   
-  return shiftDate.toLocaleDateString('ar-EG');
+  const year = shiftDate.getFullYear();
+  const month = String(shiftDate.getMonth() + 1).padStart(2, '0');
+  const day = String(shiftDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Calculate Delay in Minutes Safely (Latency Bug Fix)
